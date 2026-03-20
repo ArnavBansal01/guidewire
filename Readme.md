@@ -20,7 +20,7 @@ India’s gig economy relies on delivery partners whose daily wages are highly v
 3. **Policy Activation:** Rahul subscribes to a plan. Coverage locks in for the upcoming 7-day cycle.
 4. **Parametric Automation (Real-time):** On Wednesday, Delhi hits an AQI of 450. GigShield's API integration detects the threshold breach.
 5. **Activity Validation:** The system queries simulated platform APIs to verify Rahul was active in the affected zone but suffered an order drop.
-6. **Automatic Claim Initiation:** A claim is triggered instantly—no manual paperwork.
+6. **Automatic Claim Initiation:** For 99% of trusted users, the claim triggers instantly with zero manual paperwork. (Note: If a user's device telemetry triggers a fraud alert, the system temporarily halts the auto-claim and applies 'Adaptive Friction', requiring a quick video upload to verify reality).
 7. **Instant Payout:** Income protection payout is processed immediately via the Razorpay sandbox.
 
 ---
@@ -70,7 +70,7 @@ We use **Adaptive Friction** to protect honest workers experiencing genuine netw
 To ensure the insurance pool remains financially sustainable, GigShield implements strict business logic mitigations:
 
 * **Coverage Window & Upgrade Locks:** Policies and upgrades activate only at the *next* weekly cycle, preventing opportunistic purchases based on short-term weather apps.
-* **Minimum Subscription Duration:** Workers must subscribe for a minimum 4-week cycle to stabilize the risk pool.
+* **Week Commitment Cycle:** While premiums are billed and structured weekly, workers commit to a minimum 4-week cycle. Payouts are still instant from Week 1, but this minimum commitment prevents adverse selection (i.e., users buying just one week of insurance only because a storm is forecasted).
 * **Threshold Gaming & Partial Day Mitigation:** Payouts are time-weighted (proportional to disruption duration) and require both the parametric threshold to be crossed *and* an actual verified income drop.
 * **Platform Demand Mismatch:** Suppresses payouts if a disruption (like light rain) actually increases delivery demand and the worker's earnings remain stable.
 * **Zone Boundary Manipulation:** Validates actual delivery routes and order locations rather than relying on static GPS pings.
@@ -115,4 +115,4 @@ GigShield will initially launch as a **Progressive Web Application (PWA)** built
 ### Phase 1 Deliverables
 * ✅ Idea Document (This README)
 * ✅ GitHub Repository Structure
-* 🎥 **[https://youtu.be/H-ARf36k5WM]**
+* 🎥 **[https://youtu.be/mCH__EvQ4JY]**
