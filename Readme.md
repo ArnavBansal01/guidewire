@@ -67,10 +67,11 @@ We use **Adaptive Friction** to protect honest workers experiencing genuine netw
 ---
 
 ## 5. Comprehensive Exploit Prevention & Sustainability
-To ensure the insurance pool remains financially sustainable, GigShield implements strict business logic mitigations:
+To ensure the insurance pool remains financially sustainable while strictly adhering to a worker-friendly **Weekly Model**, GigShield implements the following logic:
 
-* **Coverage Window & Upgrade Locks:** Policies and upgrades activate only at the *next* weekly cycle, preventing opportunistic purchases based on short-term weather apps.
-* **Week Commitment Cycle:** While premiums are billed and structured weekly, workers commit to a minimum 4-week cycle. Payouts are still instant from Week 1, but this minimum commitment prevents adverse selection (i.e., users buying just one week of insurance only because a storm is forecasted).
+* **Fixed Weekly Cycles & 48-Hour Enrollment Blackout (The Core Defense):** GigShield operates on a **Universal Fixed Weekly Cycle** (e.g., Monday 12:00 AM to Sunday 11:59 PM). To prevent adverse selection (e.g., a worker checking a weather app on Sunday night and buying a policy for a storm hitting Monday morning), we enforce a strict 48-hour enrollment cutoff. 
+  * *How it works:* To be covered for the upcoming Monday–Sunday cycle, a worker must subscribe by **Friday at 11:59 PM**. 
+  * *The Failsafe:* Any policy purchased during the Saturday/Sunday blackout window is locked out of the immediate week and automatically rolls over to activate for the *following* week's cycle. This completely neutralizes short-term weather forecasting exploits.
 * **Threshold Gaming & Partial Day Mitigation:** Payouts are time-weighted (proportional to disruption duration) and require both the parametric threshold to be crossed *and* an actual verified income drop.
 * **Platform Demand Mismatch:** Suppresses payouts if a disruption (like light rain) actually increases delivery demand and the worker's earnings remain stable.
 * **Zone Boundary Manipulation:** Validates actual delivery routes and order locations rather than relying on static GPS pings.
