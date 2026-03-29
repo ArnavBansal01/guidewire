@@ -32,28 +32,30 @@ const Landing = () => {
     { icon: Thermometer, label: 'Severe Heatwave', color: 'text-amber-500', bg: 'bg-white/80 dark:bg-slate-900/80', border: 'border-amber-100 dark:border-amber-900/40', desc: 'Temperature peaks crossing 42°C for safety.' },
     { icon: Wind, label: 'Critical Air Quality', color: 'text-purple-500', bg: 'bg-white/80 dark:bg-slate-900/80', border: 'border-purple-100 dark:border-purple-900/40', desc: 'AQI levels crossing the hazardous 400+ mark.' },
   ];
-
   const testimonials = [
     {
-      name: 'Rahul Kumar',
-      role: 'Delivery Partner · Swiggy',
-      quote: "App went down for 3 hours. By Sunday morning, ₹600 was in my account. I did not file anything.",
-      amount: '₹600 received',
-      reason: 'App Outage'
+      name: 'Sunita Rao',
+      role: 'Partner · Swiggy',
+      image: '/indian_gig_worker_2.png',
+      quote: "Intense rainfall exceeding 15mm/hr flooded my route. I was worried about my earnings, but GigShield detected the weather data and paid me ₹380 instantly.",
+      amount: '₹380 received',
+      reason: 'Intense Rainfall'
     },
     {
-      name: 'Priya Mistry',
-      role: 'Delivery Partner · Zomato',
-      quote: "Heavy rain kept me home. Got a message saying ₹560 deposited. No calls, no forms. It just happened.",
-      amount: '₹560 received',
-      reason: 'Heavy Rain'
+      name: 'Vikram Singh',
+      role: 'Partner · Uber',
+      image: '/indian_gig_worker_1.png',
+      quote: "An emergency curfew was declared at 6 PM. I couldn't finish my evening shift, but ₹400 was credited to my wallet before midnight.",
+      amount: '₹400 received',
+      reason: 'Emergency Curfew'
     },
     {
-      name: 'Arjun Sharma',
-      role: 'Driver Partner · Uber',
-      quote: "Curfew was declared and I could not drive all day. Got an SMS that ₹350 was initiated within 90 mins.",
-      amount: '₹350 received',
-      reason: 'Curfew'
+      name: 'Karan Mehra',
+      role: 'Partner · Zomato',
+      image: '/indian_gig_worker_3.png',
+      quote: "The severe heatwave crossed 42°C, and it wasn't safe to ride. GigShield's live monitoring confirmed the temperature and sent ₹320 right away.",
+      amount: '₹320 received',
+      reason: 'Severe Heatwave'
     }
   ];
 
@@ -302,18 +304,22 @@ const Landing = () => {
                    key={i} 
                    {...defaultFadeUp} 
                    transition={{ ...defaultFadeUp.transition, delay: i * 0.1 }}
-                   className={`p-8 sm:p-10 bg-white dark:bg-slate-900 rounded-[32px] sm:rounded-[40px] border border-slate-200 dark:border-slate-800 text-left flex flex-col relative shadow-lg hover:shadow-2xl transition-all ${i === 1 ? 'md:-translate-y-8' : ''}`}
+                   className={`p-8 sm:p-10 bg-white dark:bg-slate-900 rounded-[32px] sm:rounded-[40px] border border-slate-200 dark:border-slate-800 text-left flex flex-col relative shadow-lg hover:shadow-2xl transition-all`}
                 >
                    <div className="absolute -top-5 sm:-top-6 left-8 sm:left-10 p-3 sm:p-4 bg-slate-900 dark:bg-white rounded-xl sm:rounded-2xl shadow-xl">
                       <Star className="w-4 h-4 sm:w-6 sm:h-6 text-amber-400 fill-current" />
                    </div>
                    
-                   <p className="text-base sm:text-lg text-slate-600 dark:text-slate-400 leading-relaxed italic mb-8 sm:mb-12 mt-2 sm:mt-4 font-medium">
+                   <p className="text-base sm:text-lg text-slate-600 dark:text-slate-400 leading-relaxed italic mb-12 sm:mb-16 mt-2 sm:mt-4 font-medium min-h-[140px] sm:min-h-[120px]">
                       "{t.quote}"
                    </p>
                    
-                   <div className="flex items-center gap-4 border-t border-slate-100 dark:border-slate-800 pt-8">
-                      <div className="w-12 h-12 bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 rounded-full flex-shrink-0" />
+                   <div className="flex items-center gap-4 border-t border-slate-100 dark:border-slate-800 pt-8 mt-auto">
+                      {(t as any).image ? (
+                        <img src={(t as any).image} alt={t.name} className="w-12 h-12 rounded-full object-cover border-2 border-emerald-500/20 shadow-sm" />
+                       ) : (
+                        <div className="w-12 h-12 bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 rounded-full flex-shrink-0" />
+                      )}
                       <div>
                          <div className="font-bold text-slate-900 dark:text-white leading-none mb-1">{t.name}</div>
                          <div className="text-[10px] text-slate-400 uppercase tracking-widest font-black">{t.role}</div>
