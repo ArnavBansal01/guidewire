@@ -2,6 +2,10 @@ import { useState } from 'react';
 import { Shield, AlertTriangle, Activity, Users, Zap, Terminal } from 'lucide-react';
 import { mockAdminStats, mockFraudAlerts, cities, disruptionTypes } from '../mockData';
 
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "../firebase";
+
+
 const Admin = () => {
   const [selectedCity, setSelectedCity] = useState('');
   const [selectedDisruption, setSelectedDisruption] = useState('');
@@ -11,7 +15,7 @@ const Admin = () => {
     '[INFO] Real-time monitoring active',
   ]);
 
-  const handleDeployDisruption = () => {
+  const handleDeployDisruption = async () => {
     if (!selectedCity || !selectedDisruption) {
       return;
     }
@@ -35,7 +39,27 @@ const Admin = () => {
       `[${timestamp}] DEPLOYMENT COMPLETE`,
     ];
 
+    // Update the UI terminal logs
     setTerminalLogs([...terminalLogs, ...newLogs]);
+
+    // --- NEW FIREBASE INTEGRATION ---
+    try {
+      // Pushing the specific event to the database so the worker dashboard sees it
+      await addDoc(collection(db, "claims"), {
+        workerName: "Rahul", // Hardcoded to your persona for the demo
+        amount: selectedDisruption === 'Severe Pollution' ? 150 : 250, // Dynamic amount based on selection
+        status: "PAID",
+        triggerType: selectedDisruption,
+        location: selectedCity,
+        platformActivity: "Verified active for 4+ hours during disruption",
+        timeToPay: "58s",
+        timestamp: serverTimestamp() // Creates a true server timestamp for sorting
+      });
+      console.log("Successfully pushed claim to Firestore");
+    } catch (error) {
+      console.error("Error pushing to Firestore: ", error);
+      setTerminalLogs(prev => [...prev, `[ERROR] Failed to connect to secure database.`]);
+    }
   };
 
   const clearLogs = () => {

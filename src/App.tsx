@@ -7,6 +7,8 @@ import Calculator from './pages/Calculator';
 import ClaimTracker from './pages/ClaimTracker';
 import RiskPrediction from './pages/RiskPrediction';
 import Admin from './pages/Admin';
+import Login from './pages/Login';
+import Register from './pages/Register';
 
 function App() {
   return (
@@ -15,6 +17,8 @@ function App() {
         <Routes>
           <Route element={<Layout />}>
             <Route path="/" element={<Landing />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/calculator" element={<Calculator />} />
             <Route path="/claim-tracker" element={<ClaimTracker />} />

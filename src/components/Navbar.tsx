@@ -1,15 +1,14 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Shield, Sun, Moon, Menu, X } from 'lucide-react';
+import { Shield, Sun, Moon } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
-import { useState } from 'react';
 
 const Navbar = () => {
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isActive = (path: string) => location.pathname === path;
 
+  // We keep the main navigation links here (excluding auth)
   const navLinks = [
     { path: '/', label: 'Home' },
     { path: '/dashboard', label: 'Dashboard' },
@@ -48,54 +47,35 @@ const Navbar = () => {
             ))}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-4">
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+              className="p-1.5 sm:p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
               aria-label="Toggle theme"
             >
               {theme === 'light' ? (
-                <Moon className="w-5 h-5 text-slate-700 dark:text-slate-300" />
+                <Moon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-700 dark:text-slate-300" />
               ) : (
-                <Sun className="w-5 h-5 text-slate-700 dark:text-slate-300" />
+                <Sun className="w-4 h-4 sm:w-5 sm:h-5 text-slate-700 dark:text-slate-300" />
               )}
             </button>
 
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 rounded-lg bg-slate-100 dark:bg-slate-800"
-              aria-label="Toggle menu"
+            <Link
+              to="/login"
+              className="px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base font-medium text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-all whitespace-nowrap"
             >
-              {mobileMenuOpen ? (
-                <X className="w-5 h-5 text-slate-700 dark:text-slate-300" />
-              ) : (
-                <Menu className="w-5 h-5 text-slate-700 dark:text-slate-300" />
-              )}
-            </button>
+              Sign In
+            </Link>
+
+            <Link
+              to="/register"
+              className="px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base font-medium bg-gradient-to-r from-cyan-500 to-emerald-500 text-white rounded-lg shadow-md hover:shadow-lg transition-all whitespace-nowrap"
+            >
+              Get Protected
+            </Link>
           </div>
         </div>
       </div>
-
-      {mobileMenuOpen && (
-        <div className="md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-          <div className="px-4 py-3 space-y-1">
-            {navLinks.map((link) => (
-              <Link
-                key={link.path}
-                to={link.path}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block px-4 py-3 rounded-lg font-medium transition-all ${
-                  isActive(link.path)
-                    ? 'bg-gradient-to-r from-cyan-500 to-emerald-500 text-white'
-                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
     </nav>
   );
 };
