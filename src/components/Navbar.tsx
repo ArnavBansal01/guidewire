@@ -32,19 +32,36 @@ const Navbar = () => {
           </Link>
 
           <div className="hidden md:flex items-center gap-1">
-            {location.pathname !== '/' && navLinks.map((link) => (
-              <Link
-                key={link.path}
-                to={link.path}
-                className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                  isActive(link.path)
-                    ? 'bg-gradient-to-r from-cyan-500 to-emerald-500 text-white shadow-md'
-                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
+            {location.pathname === '/' ? (
+              <>
+                <a href="#how-it-works" className="px-4 py-2 rounded-lg font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+                  How it works
+                </a>
+                <a href="#plans" className="px-4 py-2 rounded-lg font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+                  Plans
+                </a>
+                <a href="#about" className="px-4 py-2 rounded-lg font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+                  About
+                </a>
+                <a href="#faq" className="px-4 py-2 rounded-lg font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+                  FAQ
+                </a>
+              </>
+            ) : (
+              navLinks.map((link) => (
+                <Link
+                  key={link.path}
+                  to={link.path}
+                  className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                    isActive(link.path)
+                      ? 'bg-gradient-to-r from-cyan-500 to-emerald-500 text-white shadow-md'
+                      : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              ))
+            )}
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
