@@ -4,6 +4,13 @@
 
 html {
   scroll-behavior: smooth;
+  font-size: 75%;
+}
+
+@media (min-width: 640px) {
+  html {
+    font-size: 100%;
+  }
 }
 
 @layer utilities {

@@ -101,10 +101,10 @@ const Landing = () => {
                 </div>
               </div>
 
-              <h1 className="text-5xl sm:text-6xl lg:text-5xl xl:text-6xl font-bold mb-6 leading-[1.15] tracking-tight text-slate-900 dark:text-white text-center lg:text-left">
+              <h1 className="text-3xl sm:text-6xl lg:text-5xl xl:text-8xl font-black mb-6 leading-[1.1] tracking-tighter text-slate-900 dark:text-white text-center lg:text-left">
                 Shield your earnings. <br />
                 Smart. Simple. <br />
-                <span className="bg-gradient-to-r from-cyan-600 to-emerald-600 bg-clip-text text-transparent">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-emerald-500">
                   Instant.
                 </span>
               </h1>
@@ -166,19 +166,18 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Stats Banner */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8">
+      <section className="py-12 sm:py-16 px-4">
         <div className="max-w-7xl mx-auto">
           <motion.div 
             {...defaultFadeUp}
-            className="grid sm:grid-cols-3 gap-8 text-center"
+            className="flex flex-row justify-between sm:grid sm:grid-cols-3 gap-2 sm:gap-8 text-center"
           >
             {stats.map((stat, index) => (
-              <div key={index} className="p-6">
-                <div className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-cyan-600 to-emerald-600 bg-clip-text text-transparent mb-2">
+              <div key={index} className="flex-1 p-2 sm:p-6 min-w-0">
+                <div className="text-xl sm:text-5xl font-black bg-gradient-to-r from-cyan-600 to-emerald-600 bg-clip-text text-transparent mb-1 sm:mb-2 whitespace-nowrap">
                   {stat.value}
                 </div>
-                <div className="text-slate-600 dark:text-slate-400 font-medium mt-2">
+                <div className="text-[8px] sm:text-base text-slate-600 dark:text-slate-400 font-bold uppercase tracking-tight">
                   {stat.label}
                 </div>
               </div>
@@ -188,11 +187,12 @@ const Landing = () => {
       </section>
 
       {/* How It Works Section */}
-      <section id="how-it-works" className="py-24 px-4 sm:px-6 lg:px-8">
+      <section id="how-it-works" className="py-20 sm:py-24 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <motion.div {...defaultFadeUp} className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4 italic tracking-tight underline decoration-emerald-500/30">Our Protection Architecture</h2>
-            <p className="text-xl text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+          <motion.div {...defaultFadeUp} className="text-center mb-12 sm:mb-16">
+            <h2 className="text-3xl sm:text-4xl font-black mb-4 tracking-tighter text-slate-900 dark:text-white uppercase italic">Our Protection Architecture</h2>
+            <div className="w-20 h-1 bg-cyan-500 mx-auto mb-6 rounded-full" />
+            <p className="text-base sm:text-xl text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
               GigShield operates autonomously in the background. Connect your platform once and let our risk engine manage your coverage.
             </p>
           </motion.div>
@@ -251,15 +251,15 @@ const Landing = () => {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-emerald-500/5 rounded-full blur-[120px] -z-10" />
         
         <div className="max-w-7xl mx-auto">
-          <motion.div {...defaultFadeUp} className="text-center mb-20">
-            <h2 className="text-5xl sm:text-6xl font-black mb-6 tracking-tight relative inline-block">
+          <motion.div {...defaultFadeUp} className="text-center mb-12 sm:mb-20">
+            <h2 className="text-4xl sm:text-6xl font-black mb-4 sm:mb-6 tracking-tight relative inline-block">
               <span className="text-slate-900 dark:text-white">Auto-Detection</span>
-              <span className="block text-emerald-500 dark:text-emerald-400 drop-shadow-[0_0_15px_rgba(16,185,129,0.3)] dark:drop-shadow-[0_0_20px_rgba(52,211,153,0.5)]">Protocols</span>
+              <span className="block text-emerald-500 dark:text-emerald-400 drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]">Protocols</span>
             </h2>
-            <p className="text-xl text-slate-500 max-w-2xl mx-auto mt-6">When the world gets tough, GigShield steps in. Our data engine monitors these environmental triggers 24/7 to secure your livelihood.</p>
+            <p className="text-sm sm:text-xl text-slate-500 max-w-2xl mx-auto mt-4 sm:mt-6 px-4">When the world gets tough, GigShield steps in. Our data engine monitors these environmental triggers 24/7 to secure your livelihood.</p>
           </motion.div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8">
              {triggers.map((trigger, i) => (
                <motion.div 
                  key={i} 
@@ -268,15 +268,15 @@ const Landing = () => {
                  className="relative group h-full"
                >
                  <div className="absolute -inset-1 bg-gradient-to-br from-cyan-500/20 to-emerald-500/20 rounded-[32px] blur opacity-25 group-hover:opacity-100 transition duration-500" />
-                 <div className="relative h-full bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border border-white/20 dark:border-slate-800/50 p-10 rounded-[32px] flex flex-col items-center text-center gap-6 shadow-xl hover:shadow-2xl transition-all">
-                   <div className={`p-5 rounded-3xl ${trigger.bg} border ${trigger.border} group-hover:scale-110 transition-transform shadow-inner`}>
-                     <trigger.icon className={`w-10 h-10 ${trigger.color}`} />
+                 <div className="relative h-full bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border border-white/20 dark:border-slate-800/50 p-6 sm:p-10 rounded-[32px] sm:rounded-[32px] flex flex-col items-center text-center gap-4 sm:gap-6 shadow-xl hover:shadow-2xl transition-all">
+                   <div className={`p-4 sm:p-5 rounded-2xl sm:rounded-3xl ${trigger.bg} border ${trigger.border} group-hover:scale-110 transition-transform shadow-inner`}>
+                     <trigger.icon className={`w-8 h-8 sm:w-10 sm:h-10 ${trigger.color}`} />
                    </div>
                    <div>
-                     <h4 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">{trigger.label}</h4>
-                     <p className="text-sm text-slate-500 leading-relaxed font-medium">{(trigger as any).desc}</p>
+                     <h4 className="text-base sm:text-2xl font-bold text-slate-900 dark:text-white mb-2 sm:mb-3 leading-tight">{trigger.label}</h4>
+                     <p className="text-[10px] sm:text-sm text-slate-500 leading-relaxed font-medium">{(trigger as any).desc}</p>
                    </div>
-                   <div className="mt-auto pt-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-tighter text-emerald-500/60">
+                   <div className="mt-auto pt-2 sm:pt-4 flex items-center gap-2 text-[8px] sm:text-[10px] font-black uppercase tracking-tighter text-emerald-500/60">
                       <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
                       Live Monitoring Active
                    </div>
@@ -288,27 +288,27 @@ const Landing = () => {
       </section>
 
       {/* Testimonials Section */}
-      <section className="py-32 px-4 sm:px-6 lg:px-8 bg-slate-50/50 dark:bg-slate-950/20">
+      <section className="py-20 sm:py-32 px-4 sm:px-6 lg:px-8 bg-slate-50/50 dark:bg-slate-950/20">
         <div className="max-w-7xl mx-auto">
-           <motion.div {...defaultFadeUp} className="text-center mb-24">
-              <span className="text-xs font-bold text-emerald-500 uppercase tracking-[0.3em] mb-4 block">Proven Resilience</span>
-              <h2 className="text-5xl font-black mb-6">Real Payouts, Real Stories</h2>
-              <div className="w-24 h-1.5 bg-gradient-to-r from-cyan-500 to-emerald-500 mx-auto rounded-full" />
+           <motion.div {...defaultFadeUp} className="text-center mb-16 sm:mb-24">
+              <span className="text-[10px] sm:text-xs font-bold text-emerald-500 uppercase tracking-[0.3em] mb-4 block">Proven Resilience</span>
+              <h2 className="text-3xl sm:text-5xl font-black mb-6">Real Payouts, Real Stories</h2>
+              <div className="w-16 sm:w-24 h-1 sm:h-1.5 bg-gradient-to-r from-cyan-500 to-emerald-500 mx-auto rounded-full" />
            </motion.div>
 
-           <div className="grid md:grid-cols-3 gap-8 items-start">
+           <div className="grid md:grid-cols-3 gap-6 sm:gap-8 items-start">
               {testimonials.map((t, i) => (
                 <motion.div 
                    key={i} 
                    {...defaultFadeUp} 
                    transition={{ ...defaultFadeUp.transition, delay: i * 0.1 }}
-                   className={`p-10 bg-white dark:bg-slate-900 rounded-[40px] border border-slate-200 dark:border-slate-800 text-left flex flex-col relative shadow-lg hover:shadow-2xl transition-all ${i === 1 ? 'md:-translate-y-8' : ''}`}
+                   className={`p-8 sm:p-10 bg-white dark:bg-slate-900 rounded-[32px] sm:rounded-[40px] border border-slate-200 dark:border-slate-800 text-left flex flex-col relative shadow-lg hover:shadow-2xl transition-all ${i === 1 ? 'md:-translate-y-8' : ''}`}
                 >
-                   <div className="absolute -top-6 left-10 p-4 bg-slate-900 dark:bg-white rounded-2xl shadow-xl">
-                      <Star className="w-6 h-6 text-amber-400 fill-current" />
+                   <div className="absolute -top-5 sm:-top-6 left-8 sm:left-10 p-3 sm:p-4 bg-slate-900 dark:bg-white rounded-xl sm:rounded-2xl shadow-xl">
+                      <Star className="w-4 h-4 sm:w-6 sm:h-6 text-amber-400 fill-current" />
                    </div>
                    
-                   <p className="text-lg text-slate-600 dark:text-slate-400 leading-relaxed italic mb-12 mt-4 font-medium">
+                   <p className="text-base sm:text-lg text-slate-600 dark:text-slate-400 leading-relaxed italic mb-8 sm:mb-12 mt-2 sm:mt-4 font-medium">
                       "{t.quote}"
                    </p>
                    
@@ -331,23 +331,23 @@ const Landing = () => {
       </section>
 
       {/* About Section - Revamped */}
-      <section id="about" className="py-40 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-cyan-500/10 rounded-full blur-[150px] translate-x-1/2 -translate-y-1/2" />
-        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-emerald-500/10 rounded-full blur-[150px] -translate-x-1/2 translate-y-1/2" />
+      <section id="about" className="py-24 sm:py-40 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-[400px] h-[400px] sm:w-[600px] sm:h-[600px] bg-cyan-500/10 rounded-full blur-[150px] translate-x-1/2 -translate-y-1/2" />
+        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] sm:w-[600px] sm:h-[600px] bg-emerald-500/10 rounded-full blur-[150px] -translate-x-1/2 translate-y-1/2" />
 
         <div className="max-w-7xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-20 items-center">
+          <div className="grid lg:grid-cols-2 gap-12 sm:gap-20 items-center">
             <motion.div {...defaultFadeUp}>
-              <h2 className="text-5xl sm:text-7xl font-black mb-8 leading-tight">
+              <h2 className="text-4xl sm:text-7xl font-black mb-6 sm:mb-8 leading-tight">
                 Insurance that <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-emerald-500">Doesn't Argue.</span>
               </h2>
-              <div className="space-y-8 text-xl text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
+              <div className="space-y-6 sm:space-y-8 text-lg sm:text-xl text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
                 <p>
                   Old-school coverage is broken. Why should you file a claim for a storm everyone can see on the radar? Why wait weeks for a human to "verify" what data already knows?
                 </p>
-                <p className="p-8 bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-xl relative">
-                  <span className="absolute -top-4 -left-4 text-6xl text-cyan-500/20 font-black italic">"</span>
+                <p className="p-6 sm:p-8 bg-white dark:bg-slate-900 rounded-3xl sm:rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-xl relative">
+                  <span className="absolute -top-3 -left-3 sm:-top-4 sm:-left-4 text-4xl sm:text-6xl text-cyan-500/20 font-black italic">"</span>
                   GigShield is built on the principle of <span className="text-slate-900 dark:text-white font-black">Parametric Truth</span>. Our data ecosystem connects directly to your platform's pulse, ensuring you get paid for the hours you intended to work — guaranteed.
                 </p>
               </div>
@@ -375,16 +375,16 @@ const Landing = () => {
       </section>
 
       {/* FAQ Section - Premium Redesign */}
-      <section id="faq" className="py-32 px-4 sm:px-6 lg:px-8 relative overflow-hidden bg-slate-50/30 dark:bg-slate-900/10">
+      <section id="faq" className="py-20 sm:py-32 px-4 sm:px-6 lg:px-8 relative overflow-hidden bg-slate-50/30 dark:bg-slate-900/10">
         <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-emerald-500/5 rounded-full blur-[100px] translate-x-1/2 -translate-y-1/2" />
         
         <motion.div {...defaultFadeUp} className="max-w-4xl mx-auto">
-          <div className="text-center mb-16">
-            <span className="text-xs font-black text-cyan-500 uppercase tracking-[0.2em] mb-4 block">Knowledge Base</span>
-            <h2 className="text-4xl sm:text-5xl font-black mb-6 tracking-tight">Got Questions? <br /><span className="text-slate-400">We've Got Answers.</span></h2>
+          <div className="text-center mb-12 sm:mb-16">
+            <span className="text-[10px] sm:text-xs font-black text-cyan-500 uppercase tracking-[0.2em] mb-4 block">Knowledge Base</span>
+            <h2 className="text-3xl sm:text-5xl font-black mb-4 sm:mb-6 tracking-tight">Got Questions? <br /><span className="text-slate-400">We've Got Answers.</span></h2>
           </div>
           
-          <div className="grid gap-4">
+          <div className="grid gap-3 sm:gap-4">
             {[
               { q: 'How does the payout process work?', a: 'Completely autonomously. Our nodes monitor weather and platform data streams. When a disruption threshold is crossed in your active zone, a settlement is automatically initiated. Zero paperwork required.' },
               { q: 'Is there any upfront cost?', a: 'No. GigShield operates on a performance-based contribution model. Your weekly premium is automatically handled via your linked account, ensuring your coverage is always active without requiring upfront deposits.' },
@@ -394,15 +394,15 @@ const Landing = () => {
               <motion.div 
                 key={index}
                 whileHover={{ scale: 1.01 }}
-                className="group p-8 bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:border-cyan-500/30 transition-all cursor-default"
+                className="group p-6 sm:p-8 bg-white dark:bg-slate-900 rounded-[24px] sm:rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:border-cyan-500/30 transition-all cursor-default"
               >
-                <div className="flex gap-6">
-                  <div className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center flex-shrink-0 group-hover:bg-cyan-500/10 transition-colors">
-                    <Shield className="w-6 h-6 text-slate-400 group-hover:text-cyan-500 transition-colors" />
+                <div className="flex gap-4 sm:gap-6">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center flex-shrink-0 group-hover:bg-cyan-500/10 transition-colors">
+                    <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-slate-400 group-hover:text-cyan-500 transition-colors" />
                   </div>
                   <div>
-                    <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-3 tracking-tight">{faq.q}</h4>
-                    <p className="text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
+                    <h4 className="text-base sm:text-xl font-bold text-slate-900 dark:text-white mb-2 sm:mb-3 tracking-tight leading-tight">{faq.q}</h4>
+                    <p className="text-[10px] sm:text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
                       {faq.a}
                     </p>
                   </div>
@@ -416,15 +416,15 @@ const Landing = () => {
       {/* Footer */}
       <footer className="py-12 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center">
-          <h3 className="text-2xl font-black mb-8 italic text-slate-400 dark:text-slate-600 text-center max-w-2xl">
+          <h3 className="text-lg sm:text-2xl font-black mb-8 italic text-slate-400 dark:text-slate-600 text-center max-w-2xl px-4">
             "Your safety net, automated. Focus on the work, we'll handle the unexpected."
           </h3>
-          <div className="flex flex-col sm:flex-row items-center gap-6 mt-4">
-            <Link to="/terms" className="text-sm font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">Terms & Conditions</Link>
-            <div className="hidden sm:block w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700" />
-            <Link to="/privacy" className="text-sm font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">Privacy Policy</Link>
-            <div className="hidden sm:block w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700" />
-            <a href="#" className="text-sm font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">Contact Support</a>
+          <div className="flex flex-row items-center justify-center flex-wrap gap-4 sm:gap-6 mt-4">
+            <Link to="/terms" className="text-[10px] sm:text-sm font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">Terms & Conditions</Link>
+            <div className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+            <Link to="/privacy" className="text-[10px] sm:text-sm font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">Privacy Policy</Link>
+            <div className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+            <a href="#" className="text-[10px] sm:text-sm font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">Contact Support</a>
           </div>
           <p className="text-xs text-slate-400 mt-12">© {new Date().getFullYear()} Gigshield Inc. All rights reserved.</p>
         </div>
