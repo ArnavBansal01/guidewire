@@ -140,7 +140,7 @@ const Landing = () => {
 
   const platforms = partners
     .filter((p) => p && p.toLowerCase() !== "other")
-    .map((name) => ({ name, logo: `/logos/${sanitizeLogoName(name)}.svg` }));
+    .map((name) => ({ name, logo: `/logos/${sanitizeLogoName(name)}.png` }));
 
   const triggers = [
     {

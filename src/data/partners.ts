@@ -7,6 +7,6 @@ export const partners = [
 
   'Rapido',
   'Porter',
-  'Amazon Flex',
+  'Amazon',
   'Flipkart','Other'
 ];
