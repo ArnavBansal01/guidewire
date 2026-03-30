@@ -11,6 +11,7 @@ import {
   Thermometer,
   Wind,
   X,
+  ChevronDown,
 } from "lucide-react";
 import { motion, AnimatePresence, useInView } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
@@ -204,6 +205,7 @@ const Landing = () => {
   ];
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const statsSectionRef = useRef<HTMLDivElement | null>(null);
   const statsInView = useInView(statsSectionRef, { once: true, amount: 0.35 });
   const location = useLocation();
@@ -720,7 +722,7 @@ const Landing = () => {
             </h2>
           </div>
 
-          <div className="grid gap-3 sm:gap-4">
+          <div className="grid gap-2.5 sm:gap-3">
             {[
               {
                 q: "How does the payout process work?",
@@ -738,27 +740,54 @@ const Landing = () => {
                 q: "Can I cancel my coverage?",
                 a: "Yes. You can cancel anytime. Future deductions stop immediately, while your current active cycle remains covered until it ends.",
               },
-            ].map((faq, index) => (
-              <motion.div
-                key={index}
-                whileHover={{ scale: 1.01 }}
-                className="group p-6 sm:p-8 bg-white dark:bg-slate-900 rounded-[24px] sm:rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:border-cyan-500/30 transition-all duration-300 cursor-default"
-              >
-                <div className="flex gap-4 sm:gap-6">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center flex-shrink-0 group-hover:bg-cyan-500/10 transition-colors">
-                    <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-slate-400 group-hover:text-cyan-500 transition-colors" />
-                  </div>
-                  <div>
-                    <h4 className="text-base sm:text-xl font-bold text-slate-900 dark:text-white mb-2 sm:mb-3 tracking-tight leading-tight">
-                      {faq.q}
-                    </h4>
-                    <p className="text-[10px] sm:text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
-                      {faq.a}
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+            ].map((faq, index) => {
+              const isOpen = openFaqIndex === index;
+
+              return (
+                <motion.div
+                  key={index}
+                  whileHover={{ scale: 1.01 }}
+                  className="group bg-white dark:bg-slate-900 rounded-[18px] sm:rounded-[22px] border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:border-cyan-500/30 transition-all duration-300"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setOpenFaqIndex(isOpen ? null : index)}
+                    className="w-full text-left p-4 sm:p-5"
+                    aria-expanded={isOpen}
+                  >
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center flex-shrink-0 group-hover:bg-cyan-500/10 transition-colors">
+                        <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 group-hover:text-cyan-500 transition-colors" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-sm sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight leading-tight">
+                          {faq.q}
+                        </h4>
+                      </div>
+                      <ChevronDown
+                        className={`w-4 h-4 sm:w-5 sm:h-5 text-slate-400 transition-transform duration-200 ${isOpen ? "rotate-180 text-cyan-500" : "rotate-0"}`}
+                      />
+                    </div>
+
+                    <AnimatePresence initial={false}>
+                      {isOpen && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.2, ease: "easeOut" }}
+                          className="overflow-hidden"
+                        >
+                          <p className="pt-3 pl-12 sm:pl-14 text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
+                            {faq.a}
+                          </p>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </button>
+                </motion.div>
+              );
+            })}
           </div>
         </motion.div>
       </section>
@@ -824,7 +853,7 @@ const Landing = () => {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-5xl max-h-[85vh] overflow-y-auto bg-white dark:bg-slate-950 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8"
+              className="relative w-full max-w-5xl bg-white dark:bg-slate-950 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6"
             >
               <button
                 onClick={closeModal}
@@ -833,11 +862,11 @@ const Landing = () => {
                 <X className="w-4 h-4 text-slate-600 dark:text-slate-300" />
               </button>
 
-              <div className="text-center mb-10 mt-2">
+              <div className="text-center mb-6 mt-1">
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block">
                   Flexible Coverage
                 </span>
-                <h2 className="text-3xl sm:text-4xl font-bold mb-3">
+                <h2 className="text-2xl sm:text-3xl font-bold mb-2">
                   Choose your protection
                 </h2>
                 <p className="text-sm text-slate-500 max-w-xl mx-auto">
@@ -846,11 +875,11 @@ const Landing = () => {
                 </p>
               </div>
 
-              <div className="grid md:grid-cols-3 gap-5 lg:gap-6">
+              <div className="grid md:grid-cols-3 gap-4 lg:gap-5">
                 {plans.map((plan, i) => (
                   <div
                     key={i}
-                    className={`relative p-6 rounded-[24px] border ${plan.popular ? "bg-slate-900 dark:bg-white border-slate-900 dark:border-white shadow-xl scale-100 md:scale-105 z-10" : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"} flex flex-col items-start text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl`}
+                    className={`relative p-5 rounded-[24px] border ${plan.popular ? "bg-slate-900 dark:bg-white border-slate-900 dark:border-white shadow-xl scale-100 md:scale-105 z-10" : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"} flex flex-col items-start text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl`}
                   >
                     {plan.popular && (
                       <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-amber-400 text-slate-900 text-[10px] font-black uppercase rounded-full">
@@ -862,9 +891,9 @@ const Landing = () => {
                     >
                       {plan.name}
                     </span>
-                    <div className="flex items-baseline gap-1 mb-6">
+                    <div className="flex items-baseline gap-1 mb-4">
                       <span
-                        className={`text-4xl font-black ${plan.popular ? "text-white dark:text-slate-900" : "text-slate-900 dark:text-white"}`}
+                        className={`text-3xl font-black ${plan.popular ? "text-white dark:text-slate-900" : "text-slate-900 dark:text-white"}`}
                       >
                         {plan.price}
                       </span>
@@ -875,14 +904,14 @@ const Landing = () => {
                       </span>
                     </div>
 
-                    <div className="space-y-3 mb-8 flex-1 w-full">
+                    <div className="space-y-2 mb-6 flex-1 w-full">
                       {plan.features.map((feature, j) => (
                         <div key={j} className="flex gap-2.5">
                           <Check
                             className={`w-4 h-4 flex-shrink-0 ${plan.popular ? "text-emerald-400" : "text-emerald-500"}`}
                           />
                           <span
-                            className={`text-xs ${plan.popular ? "text-slate-300 dark:text-slate-600" : "text-slate-600 dark:text-slate-400 font-medium"}`}
+                            className={`text-[11px] ${plan.popular ? "text-slate-300 dark:text-slate-600" : "text-slate-600 dark:text-slate-400 font-medium"}`}
                           >
                             {feature}
                           </span>
@@ -891,7 +920,7 @@ const Landing = () => {
                     </div>
 
                     <button
-                      className={`w-full py-3.5 rounded-xl text-sm font-black transition-all ${plan.popular ? "bg-amber-400 text-slate-900 hover:bg-amber-300 shadow-md" : "bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100"}`}
+                      className={`w-full py-3 rounded-xl text-sm font-black transition-all ${plan.popular ? "bg-amber-400 text-slate-900 hover:bg-amber-300 shadow-md" : "bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100"}`}
                     >
                       {plan.cta} &rarr;
                     </button>
