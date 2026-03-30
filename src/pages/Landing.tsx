@@ -15,6 +15,7 @@ import {
 import { motion, AnimatePresence, useInView } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import { plans } from "../data/plans";
+import { partners } from "../data/partners";
 
 const defaultFadeUp = {
   initial: { opacity: 0, y: 30 },
@@ -128,14 +129,15 @@ const Landing = () => {
     },
   ];
 
-  const platforms = [
-    { name: "Zomato", logo: "/logos/zomato.svg" },
-    { name: "Swiggy", logo: "/logos/swiggy.svg" },
-    { name: "Blinkit", logo: "/logos/blinkit.svg" },
-    { name: "Zepto", logo: "/logos/zepto.svg" },
-    { name: "Uber", logo: "/logos/uber.svg" },
-    { name: "Ola", logo: "/logos/ola.svg" },
-  ];
+  const sanitizeLogoName = (n: string) =>
+    n
+      .toLowerCase()
+      .replace(/\s+/g, "")
+      .replace(/[^a-z0-9]/g, "");
+
+  const platforms = partners
+    .filter((p) => p && p.toLowerCase() !== "other")
+    .map((name) => ({ name, logo: `/logos/${sanitizeLogoName(name)}.svg` }));
 
   const triggers = [
     {
@@ -483,6 +485,13 @@ const Landing = () => {
                       alt={`${platform.name} logo`}
                       className="h-7 sm:h-8 w-auto object-contain bg-white/95 rounded-md p-1"
                       loading="lazy"
+                      onError={(e) => {
+                        const img = e.currentTarget as HTMLImageElement;
+                        // Prevent infinite loop when fallback is missing
+                        if ((img.dataset as any).fallback) return;
+                        (img.dataset as any).fallback = "1";
+                        img.src = "/logos/default.svg";
+                      }}
                     />
                     <span className="text-sm sm:text-base">
                       {platform.name}

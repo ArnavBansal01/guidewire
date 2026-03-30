@@ -61,7 +61,7 @@ export const mockUser: User = {
   name: 'Rahul',
   phone: '+91 98765 43210',
   city: 'Delhi',
-  platform: 'Swiggy',
+  platform: 'Zomato',
   trustScore: 98,
   avgDailyIncome: 1000,
   avgDailyDeliveries: 25,

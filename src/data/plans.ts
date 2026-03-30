@@ -29,7 +29,7 @@ export const plans = [
   },
   {
     name: 'GigShield Premium',
-    price: '₹80',
+    price: '₹90',
     period: '/week',
     features: [
       'Maximum payout: ₹1000/week',

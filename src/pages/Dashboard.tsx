@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Shield,
   TrendingUp,
@@ -9,10 +9,13 @@ import {
   CheckCircle,
   Zap,
 } from 'lucide-react';
+
+import { auth, db } from '../firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, onSnapshot } from 'firebase/firestore';
+
 import {
-  mockUser,
-  mockPolicy,
-  currentEnvironmentalData,
+  mockPolicy, // Keeping mockPolicy for now until we build the checkout flow
   rainfallTriggerThreshold,
   aqiTriggerThreshold,
   temperatureHighThreshold,
@@ -20,61 +23,94 @@ import {
 
 const Dashboard = () => {
   const [showClaimToast, setShowClaimToast] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  
+  // 1. New State to hold the live Firestore user document
+  const [dbUser, setDbUser] = useState<any>(null);
+  
+  const [envData, setEnvData] = useState({
+    rainfall: 0,
+    aqi: 0,
+    temperature: 0
+  });
+
+  // 2. Handle Authentication AND Live User Data
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      
+      if (currentUser) {
+        // If logged in, set up a real-time listener on their specific Firestore document
+        const userRef = doc(db, 'users', currentUser.uid);
+        const unsubscribeUser = onSnapshot(userRef, (docSnap) => {
+          if (docSnap.exists()) {
+            setDbUser(docSnap.data());
+          }
+        });
+        
+        // Cleanup the listener when the component unmounts
+        return () => unsubscribeUser();
+      } else {
+        setDbUser(null);
+      }
+    });
+    return () => unsubscribeAuth();
+  }, []);
+
+  // Real-time Monitoring Listener for Chandigarh
+  useEffect(() => {
+    const envRef = doc(db, 'environmental_data', 'chandigarh_station');
+    
+    const unsubscribe = onSnapshot(envRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setEnvData(snapshot.data() as any);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const handleSimulateDisruption = () => {
     setShowClaimToast(true);
     setTimeout(() => setShowClaimToast(false), 5000);
   };
 
-  const getEnvironmentalStatus = (
-    value: number,
-    threshold: number,
-    isBelow = false
-  ) => {
+  const getEnvironmentalStatus = (value: number, threshold: number, isBelow = false) => {
     const isWarning = isBelow ? value < threshold : value > threshold;
     return {
       isWarning,
-      percentage: isBelow
-        ? (value / threshold) * 100
-        : Math.min((value / threshold) * 100, 100),
+      percentage: isBelow ? (value / threshold) * 100 : Math.min((value / threshold) * 100, 100),
     };
   };
 
-  const rainfallStatus = getEnvironmentalStatus(
-    currentEnvironmentalData.rainfall,
-    rainfallTriggerThreshold
-  );
-  const aqiStatus = getEnvironmentalStatus(
-    currentEnvironmentalData.aqi,
-    aqiTriggerThreshold
-  );
-  const tempStatus = getEnvironmentalStatus(
-    currentEnvironmentalData.temperature,
-    temperatureHighThreshold
-  );
+  const rainfallStatus = getEnvironmentalStatus(envData.rainfall, rainfallTriggerThreshold);
+  const aqiStatus = getEnvironmentalStatus(envData.aqi, aqiTriggerThreshold);
+  const tempStatus = getEnvironmentalStatus(envData.temperature, temperatureHighThreshold);
 
   const daysUntilLock = Math.ceil(
-    (new Date(mockPolicy.nextLockDate).getTime() - new Date().getTime()) /
-      (1000 * 60 * 60 * 24)
+    (new Date(mockPolicy.nextLockDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
   );
 
   return (
     <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
+        
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
+            {/* 3. Using live database names and platform info */}
             <h1 className="text-3xl sm:text-4xl font-bold mb-2">
-              Welcome back, {mockUser.name}
+              Welcome back, {dbUser?.fullName || user?.displayName || 'Rider'}
             </h1>
             <p className="text-slate-600 dark:text-slate-400">
-              {mockUser.city} • {mockUser.platform} Rider
+              {dbUser?.city || 'Your City'} • {dbUser?.platform || 'Delivery'} Rider
             </p>
           </div>
           <div className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-cyan-500 to-emerald-500 rounded-xl shadow-lg">
             <Shield className="w-6 h-6 text-white" />
             <div>
               <p className="text-sm text-white/80">Trust Score</p>
-              <p className="text-2xl font-bold text-white">{mockUser.trustScore}%</p>
+              {/* 4. Live Trust Score */}
+              <p className="text-2xl font-bold text-white">{dbUser?.trustScore || 100}%</p>
             </div>
           </div>
         </div>
@@ -89,13 +125,13 @@ const Dashboard = () => {
                 <div>
                   <h2 className="text-2xl font-bold">Policy Management</h2>
                   <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Active Plan: {mockPolicy.type.charAt(0).toUpperCase() + mockPolicy.type.slice(1)}
+                    Active Plan: {dbUser?.activePlanName || mockPolicy.type.charAt(0).toUpperCase() + mockPolicy.type.slice(1)}
                   </p>
                 </div>
               </div>
               <div className="px-4 py-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
                 <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
-                  Active
+                  {dbUser?.hasActivePolicy ? 'Active' : 'No Active Plan'}
                 </p>
               </div>
             </div>
@@ -118,28 +154,21 @@ const Dashboard = () => {
 
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
-                <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">
-                  Weekly Premium
-                </p>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Weekly Premium</p>
                 <p className="text-2xl font-bold">₹{mockPolicy.weeklyPremium}</p>
               </div>
               <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
-                <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">
-                  Coverage Amount
-                </p>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Coverage Amount</p>
                 <p className="text-2xl font-bold">₹{mockPolicy.coverageAmount}</p>
               </div>
               <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
-                <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">
-                  Avg Daily Income
-                </p>
-                <p className="text-2xl font-bold">₹{mockUser.avgDailyIncome}</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Avg Daily Income</p>
+                {/* 5. Fallback values for things not captured in registration yet */}
+                <p className="text-2xl font-bold">₹{dbUser?.avgDailyIncome || 1200}</p>
               </div>
               <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
-                <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">
-                  Avg Deliveries/Day
-                </p>
-                <p className="text-2xl font-bold">{mockUser.avgDailyDeliveries}</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Avg Deliveries/Day</p>
+                <p className="text-2xl font-bold">{dbUser?.avgDailyDeliveries || 25}</p>
               </div>
             </div>
           </div>
@@ -151,29 +180,23 @@ const Dashboard = () => {
               </div>
               <div>
                 <h2 className="text-xl font-bold">Zero-Touch Claim</h2>
-                <p className="text-xs text-slate-600 dark:text-slate-400">
-                  Automatic payouts
-                </p>
+                <p className="text-xs text-slate-600 dark:text-slate-400">Automatic payouts</p>
               </div>
             </div>
 
             <div className="space-y-4 mb-6">
               <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-                <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">
-                  Real-time monitoring
-                </p>
+                <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Real-time monitoring</p>
                 <div className="flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-emerald-500" />
                   <p className="text-sm font-medium">Device location verified</p>
                 </div>
               </div>
               <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-                <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">
-                  Platform integration
-                </p>
+                <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Platform integration</p>
                 <div className="flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-emerald-500" />
-                  <p className="text-sm font-medium">{mockUser.platform} API active</p>
+                  <p className="text-sm font-medium">{dbUser?.platform || 'API'} API active</p>
                 </div>
               </div>
             </div>
@@ -190,8 +213,7 @@ const Dashboard = () => {
         <div className="bg-white dark:bg-slate-900/50 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-6">
           <h2 className="text-2xl font-bold mb-6">Parametric Monitor</h2>
           <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
-            Live environmental data from your zone. Automatic payout triggers when thresholds are
-            exceeded.
+            Live environmental data from your zone. Automatic payout triggers when thresholds are exceeded.
           </p>
 
           <div className="grid md:grid-cols-3 gap-6">
@@ -202,7 +224,7 @@ const Dashboard = () => {
                   <div>
                     <p className="text-sm text-slate-600 dark:text-slate-400">Rainfall</p>
                     <p className="text-3xl font-bold">
-                      {currentEnvironmentalData.rainfall}
+                      {envData.rainfall}
                       <span className="text-lg">mm</span>
                     </p>
                   </div>
@@ -235,7 +257,7 @@ const Dashboard = () => {
                   <Wind className="w-8 h-8 text-purple-500" />
                   <div>
                     <p className="text-sm text-slate-600 dark:text-slate-400">AQI</p>
-                    <p className="text-3xl font-bold">{currentEnvironmentalData.aqi}</p>
+                    <p className="text-3xl font-bold">{envData.aqi}</p>
                   </div>
                 </div>
                 {aqiStatus.isWarning && (
@@ -267,7 +289,7 @@ const Dashboard = () => {
                   <div>
                     <p className="text-sm text-slate-600 dark:text-slate-400">Temperature</p>
                     <p className="text-3xl font-bold">
-                      {currentEnvironmentalData.temperature}
+                      {envData.temperature}
                       <span className="text-lg">°C</span>
                     </p>
                   </div>
@@ -314,4 +336,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
+export default Dashboard; 

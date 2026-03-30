@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Calculator as CalcIcon, TrendingUp, Shield, Zap, CheckCircle } from 'lucide-react';
-import { cities, pricingTiers } from '../mockData';
+import { cities } from '../mockData';
+// 1. Import the new plans from your data folder
+import { plans } from '../data/plans';
 
 const Calculator = () => {
   const [formData, setFormData] = useState({
@@ -16,6 +18,11 @@ const Calculator = () => {
     const randomSurge = Math.floor(Math.random() * 15) + 5;
     setSurgeAmount(randomSurge);
     setCalculated(true);
+  };
+
+  // Helper function to extract numbers from strings like "₹35"
+  const getNumericPrice = (priceStr: string) => {
+    return parseInt(priceStr.replace(/[^0-9]/g, ''), 10) || 0;
   };
 
   return (
@@ -193,59 +200,62 @@ const Calculator = () => {
         </div>
 
         {calculated && (
-          <div>
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
             <h2 className="text-3xl font-bold text-center mb-8">
               Your Personalized Pricing Options
             </h2>
             <div className="grid md:grid-cols-3 gap-6">
-              {pricingTiers.map((tier) => (
-                <div
-                  key={tier.type}
-                  className={`relative bg-white dark:bg-slate-900/50 backdrop-blur-sm rounded-2xl shadow-xl border-2 p-8 transition-all hover:scale-105 ${
-                    tier.popular
-                      ? 'border-cyan-500 dark:border-cyan-500'
-                      : 'border-slate-200 dark:border-slate-800'
-                  }`}
-                >
-                  {tier.popular && (
-                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-cyan-500 to-emerald-500 text-white text-sm font-bold rounded-full">
-                      MOST POPULAR
-                    </div>
-                  )}
+              {/* 2. Map over the imported plans array */}
+              {plans.map((plan) => {
+                const basePrice = getNumericPrice(plan.price);
+                const currentPrice = basePrice + (calculated ? surgeAmount : 0);
 
-                  <div className="text-center mb-6">
-                    <h3 className="text-2xl font-bold mb-2">{tier.name}</h3>
-                    <div className="flex items-baseline justify-center gap-1">
-                      <span className="text-4xl font-bold">
-                        ₹{tier.weeklyPremium + (calculated ? surgeAmount : 0)}
-                      </span>
-                      <span className="text-slate-600 dark:text-slate-400">/week</span>
-                    </div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
-                      Coverage up to ₹{tier.coverageAmount}
-                    </p>
-                  </div>
-
-                  <div className="space-y-3 mb-6">
-                    {tier.features.map((feature, index) => (
-                      <div key={index} className="flex items-start gap-2">
-                        <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
-                        <span className="text-sm">{feature}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  <button
-                    className={`w-full px-6 py-3 rounded-lg font-semibold transition-all ${
-                      tier.popular
-                        ? 'bg-gradient-to-r from-cyan-500 to-emerald-500 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-slate-200 dark:hover:bg-slate-700'
+                return (
+                  <div
+                    key={plan.name}
+                    className={`relative bg-white dark:bg-slate-900/50 backdrop-blur-sm rounded-2xl shadow-xl border-2 p-8 transition-all hover:scale-105 ${
+                      plan.popular
+                        ? 'border-cyan-500 shadow-cyan-500/10'
+                        : 'border-slate-200 dark:border-slate-800'
                     }`}
                   >
-                    Select {tier.name}
-                  </button>
-                </div>
-              ))}
+                    {plan.popular && (
+                      <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-cyan-500 to-emerald-500 text-white text-sm font-bold rounded-full">
+                        MOST POPULAR
+                      </div>
+                    )}
+
+                    <div className="text-center mb-6">
+                      <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
+                      <div className="flex items-baseline justify-center gap-1">
+                        <span className="text-4xl font-bold">
+                          ₹{currentPrice}
+                        </span>
+                        <span className="text-slate-600 dark:text-slate-400">{plan.period}</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3 mb-6">
+                      {plan.features.map((feature, index) => (
+                        <div key={index} className="flex items-start gap-2">
+                          <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
+                          <span className="text-sm">{feature}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      className={`w-full px-6 py-3 rounded-lg font-semibold transition-all ${
+                        plan.popular
+                          ? 'bg-gradient-to-r from-cyan-500 to-emerald-500 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-slate-200 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      {plan.cta}
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
