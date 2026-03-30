@@ -2,7 +2,7 @@
 
 India’s gig economy runs on the backs of delivery partners, but their daily earnings are incredibly fragile. A single day of heavy rain, extreme heat, or severe pollution can wipe out 20–30% of a worker's weekly income. Currently, gig workers bear this financial loss entirely on their own. We realized that traditional insurance is too slow, too paperwork-heavy, and entirely ignores "income loss" driven by environmental factors. We were inspired to build GigShield to shift this risk away from the worker, providing them with a reliable, automated financial safety net.
 
-## What it does
+## What it does 
 
 GigShield is an AI-powered parametric income insurance platform built specifically for gig workers. Workers subscribe to dynamic, weekly micro-policies. When a measurable external disruption occurs in their zone (e.g., Rainfall > 50mm, AQI > 400, or a government curfew), our system automatically detects the threshold breach via external APIs. The platform then validates the worker's drop in activity and triggers an instant, zero-touch payout to cover their lost daily wages. No claims adjusters, no paperwork, just instant algorithmic income protection.
 
