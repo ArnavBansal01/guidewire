@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Shield, UserPlus, ArrowRight } from 'lucide-react';
+import { Shield, UserPlus, ArrowRight, LayoutDashboard } from 'lucide-react';
 
 // Firebase Imports
 import { auth, db, googleProvider } from '../firebase';
@@ -11,7 +11,7 @@ const Login = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   
-  // NEW: State to trigger our "Needs Registration" UI
+  // State to trigger our "Needs Registration" UI
   const [needsRegistration, setNeedsRegistration] = useState(false);
 
   const handleGoogleLogin = async () => {
@@ -103,7 +103,7 @@ const Login = () => {
               </button>
             </div>
 
-            <p className="text-center text-sm text-slate-600 dark:text-slate-400 mt-6">
+            <p className="text-center text-sm text-slate-600 dark:text-slate-400 mt-6 mb-2">
               No account?{' '}
               <Link to="/register" className="font-semibold text-cyan-600 hover:text-cyan-500">
                 Register here
@@ -111,9 +111,22 @@ const Login = () => {
             </p>
           </div>
         )}
+
+        {/* --- DEVELOPER BACKDOOR --- */}
+        <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="group w-full flex items-center justify-center gap-2 px-4 py-3 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 font-medium rounded-lg border border-dashed border-slate-300 dark:border-slate-600 transition-all"
+          >
+            <LayoutDashboard className="w-4 h-4 group-hover:text-cyan-500 transition-colors" />
+            <span className="group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
+              Developer Bypass: Go to Dashboard
+            </span>
+          </button>
+        </div>
+
       </div>
     </div>
   );
 };
-
 export default Login;
