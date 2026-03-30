@@ -4,7 +4,7 @@ export const partners = [
   'Zepto',
   'Blinkit',
   'Uber',
-  'Ola',
+
   'Rapido',
   'Porter',
   'Amazon Flex',

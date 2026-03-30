@@ -9,21 +9,21 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-} from 'recharts';
-import { TrendingUp, AlertCircle, Brain, Calendar } from 'lucide-react';
-import { mockRiskPredictions, mockHistoricalDisruptions } from '../mockData';
+} from "recharts";
+import { TrendingUp, AlertCircle, Brain, Calendar } from "lucide-react";
+import { mockRiskPredictions, mockHistoricalDisruptions } from "../mockData";
 
 const RiskPrediction = () => {
   const getRiskColor = (level: string) => {
     switch (level) {
-      case 'high':
-        return 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30';
-      case 'medium':
-        return 'text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30';
-      case 'low':
-        return 'text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30';
+      case "high":
+        return "text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30";
+      case "medium":
+        return "text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30";
+      case "low":
+        return "text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30";
       default:
-        return 'text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800';
+        return "text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800";
     }
   };
 
@@ -38,14 +38,14 @@ const RiskPrediction = () => {
             </span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-4">
-            AI Risk{' '}
+            AI Risk{" "}
             <span className="bg-gradient-to-r from-cyan-600 to-emerald-600 bg-clip-text text-transparent">
               Prediction
             </span>
           </h1>
           <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-            7-day forward-looking analytics powered by weather APIs, historical patterns, and
-            machine learning.
+            7-day forward-looking analytics powered by weather APIs, historical
+            patterns, and machine learning.
           </p>
         </div>
 
@@ -56,13 +56,20 @@ const RiskPrediction = () => {
                 <AlertCircle className="w-6 h-6 text-white" />
               </div>
               <div>
-                <p className="text-sm text-slate-600 dark:text-slate-400">High Risk Days</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  High Risk Days
+                </p>
                 <p className="text-3xl font-bold">
-                  {mockRiskPredictions.filter((d) => d.riskLevel === 'high').length}
+                  {
+                    mockRiskPredictions.filter((d) => d.riskLevel === "high")
+                      .length
+                  }
                 </p>
               </div>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Next 7 days</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Next 7 days
+            </p>
           </div>
 
           <div className="bg-white dark:bg-slate-900/50 backdrop-blur-sm rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 p-6">
@@ -71,14 +78,21 @@ const RiskPrediction = () => {
                 <TrendingUp className="w-6 h-6 text-white" />
               </div>
               <div>
-                <p className="text-sm text-slate-600 dark:text-slate-400">Expected Loss</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  Expected Loss
+                </p>
                 <p className="text-3xl font-bold">
                   ₹
-                  {mockRiskPredictions.reduce((sum, d) => sum + d.expectedIncomeLoss, 0)}
+                  {mockRiskPredictions.reduce(
+                    (sum, d) => sum + d.expectedIncomeLoss,
+                    0,
+                  )}
                 </p>
               </div>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Potential income impact</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Potential income impact
+            </p>
           </div>
 
           <div className="bg-white dark:bg-slate-900/50 backdrop-blur-sm rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 p-6">
@@ -87,40 +101,47 @@ const RiskPrediction = () => {
                 <Calendar className="w-6 h-6 text-white" />
               </div>
               <div>
-                <p className="text-sm text-slate-600 dark:text-slate-400">Coverage Value</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  Coverage Value
+                </p>
                 <p className="text-3xl font-bold">₹2000</p>
               </div>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Your protection limit</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Your protection limit
+            </p>
           </div>
         </div>
 
         <div className="bg-white dark:bg-slate-900/50 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-6 mb-8">
           <h2 className="text-2xl font-bold mb-6">7-Day Risk Forecast</h2>
-          <div className="h-96">
+          <div className="w-full h-96 min-h-[300px] min-w-0">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={mockRiskPredictions}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                 <XAxis
                   dataKey="date"
                   tickFormatter={(value) =>
-                    new Date(value).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+                    new Date(value).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                    })
                   }
                   className="text-sm"
                 />
                 <YAxis className="text-sm" />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
-                    border: '1px solid rgba(148, 163, 184, 0.2)',
-                    borderRadius: '8px',
-                    color: '#fff',
+                    backgroundColor: "rgba(15, 23, 42, 0.9)",
+                    border: "1px solid rgba(148, 163, 184, 0.2)",
+                    borderRadius: "8px",
+                    color: "#fff",
                   }}
                   labelFormatter={(value) =>
-                    new Date(value).toLocaleDateString('en-IN', {
-                      weekday: 'long',
-                      day: 'numeric',
-                      month: 'long',
+                    new Date(value).toLocaleDateString("en-IN", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
                     })
                   }
                 />
@@ -131,7 +152,7 @@ const RiskPrediction = () => {
                   stroke="#06b6d4"
                   strokeWidth={3}
                   name="Rainfall (mm)"
-                  dot={{ fill: '#06b6d4', r: 5 }}
+                  dot={{ fill: "#06b6d4", r: 5 }}
                 />
                 <Line
                   type="monotone"
@@ -139,7 +160,7 @@ const RiskPrediction = () => {
                   stroke="#10b981"
                   strokeWidth={3}
                   name="AQI"
-                  dot={{ fill: '#10b981', r: 5 }}
+                  dot={{ fill: "#10b981", r: 5 }}
                 />
                 <Line
                   type="monotone"
@@ -147,7 +168,7 @@ const RiskPrediction = () => {
                   stroke="#ef4444"
                   strokeWidth={3}
                   name="Income Loss (₹)"
-                  dot={{ fill: '#ef4444', r: 5 }}
+                  dot={{ fill: "#ef4444", r: 5 }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -166,10 +187,10 @@ const RiskPrediction = () => {
                   <div className="flex justify-between items-start mb-3">
                     <div>
                       <p className="font-semibold mb-1">
-                        {new Date(prediction.date).toLocaleDateString('en-IN', {
-                          weekday: 'short',
-                          day: 'numeric',
-                          month: 'short',
+                        {new Date(prediction.date).toLocaleDateString("en-IN", {
+                          weekday: "short",
+                          day: "numeric",
+                          month: "short",
                         })}
                       </p>
                       <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
@@ -180,7 +201,7 @@ const RiskPrediction = () => {
                     </div>
                     <span
                       className={`px-3 py-1 rounded-full text-xs font-semibold uppercase ${getRiskColor(
-                        prediction.riskLevel
+                        prediction.riskLevel,
                       )}`}
                     >
                       {prediction.riskLevel}
@@ -204,7 +225,7 @@ const RiskPrediction = () => {
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
               Average disruption days per month in Delhi over the past 6 months
             </p>
-            <div className="h-80">
+            <div className="w-full h-80 min-h-[260px] min-w-0">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={mockHistoricalDisruptions}>
                   <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
@@ -212,10 +233,10 @@ const RiskPrediction = () => {
                   <YAxis className="text-sm" />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: 'rgba(15, 23, 42, 0.9)',
-                      border: '1px solid rgba(148, 163, 184, 0.2)',
-                      borderRadius: '8px',
-                      color: '#fff',
+                      backgroundColor: "rgba(15, 23, 42, 0.9)",
+                      border: "1px solid rgba(148, 163, 184, 0.2)",
+                      borderRadius: "8px",
+                      color: "#fff",
                     }}
                   />
                   <Legend />
@@ -245,33 +266,36 @@ const RiskPrediction = () => {
             <div>
               <h2 className="text-2xl font-bold mb-3">How Our AI Works</h2>
               <p className="text-cyan-50 mb-4">
-                GigShield's prediction engine combines multiple data sources to provide accurate
-                risk assessments:
+                GigShield's prediction engine combines multiple data sources to
+                provide accurate risk assessments:
               </p>
               <ul className="space-y-2 text-sm text-cyan-50">
                 <li className="flex items-start gap-2">
                   <span className="font-semibold">Weather APIs:</span>
                   <span>
-                    Real-time data from IMD, AccuWeather, and OpenWeather for multi-source
-                    validation
+                    Real-time data from IMD, AccuWeather, and OpenWeather for
+                    multi-source validation
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="font-semibold">Historical Patterns:</span>
                   <span>
-                    3 years of delivery disruption data correlated with weather events
+                    3 years of delivery disruption data correlated with weather
+                    events
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="font-semibold">Machine Learning:</span>
                   <span>
-                    Neural networks trained on 10M+ delivery data points to predict income impact
+                    Neural networks trained on 10M+ delivery data points to
+                    predict income impact
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="font-semibold">Micro-zone Analysis:</span>
                   <span>
-                    Risk calculated at neighborhood level, not city-wide averages
+                    Risk calculated at neighborhood level, not city-wide
+                    averages
                   </span>
                 </li>
               </ul>

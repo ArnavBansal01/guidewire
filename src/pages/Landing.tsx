@@ -17,6 +17,7 @@ import { motion, AnimatePresence, useInView } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import { plans } from "../data/plans";
 import { partners } from "../data/partners";
+import { useAuth } from "../contexts/AuthContext";
 
 const defaultFadeUp = {
   initial: { opacity: 0, y: 30 },
@@ -87,25 +88,26 @@ const AnimatedStatValue = ({
 };
 
 const Landing = () => {
+  const { user, signOutUser } = useAuth();
   const stats = [
     {
       label: "Average Payout Time",
-      target: 5,
+      target: 60,
       prefix: "< ",
-      suffix: " Minutes",
+      suffix: " Seconds",
       decimals: 0,
       useThousandsSeparator: false,
     },
     {
       label: "Workers Covered",
-      target: 10000,
+      target: 12810,
       suffix: "+",
       decimals: 0,
       useThousandsSeparator: true,
     },
     {
       label: "Claim Approval Rate",
-      target: 99.9,
+      target: 99.6,
       suffix: "%",
       decimals: 1,
       useThousandsSeparator: false,
@@ -291,12 +293,24 @@ const Landing = () => {
               </div>
 
               <div className="flex flex-wrap gap-4 items-center justify-center lg:justify-start w-full">
-                <Link
-                  to="/register"
-                  className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-cyan-500 to-emerald-500 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all text-lg text-center"
-                >
-                  Get Protected Now
-                </Link>
+                {!user ? (
+                  <Link
+                    to="/register"
+                    className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-cyan-500 to-emerald-500 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all text-lg text-center"
+                  >
+                    Get Protected Now
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void signOutUser();
+                    }}
+                    className="w-full sm:w-auto px-8 py-4 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-bold rounded-lg shadow hover:shadow-lg transition-all border border-slate-200 dark:border-slate-700 text-lg"
+                  >
+                    Sign Out
+                  </button>
+                )}
                 <button
                   onClick={() =>
                     document
