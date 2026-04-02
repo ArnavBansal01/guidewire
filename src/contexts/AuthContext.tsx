@@ -13,6 +13,7 @@ type AuthContextType = {
   user: User | null;
   loading: boolean;
   signOutUser: () => Promise<void>;
+  demoLogin: (role: "worker" | "admin") => void;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,7 +24,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+      const fakeDemoUser = localStorage.getItem("demoUser");
+      if (fakeDemoUser) {
+        setUser({ uid: `demo_${fakeDemoUser}`, email: `demo@${fakeDemoUser}.com` } as User);
+      } else {
+        setUser(currentUser);
+      }
       setLoading(false);
     });
 
@@ -35,8 +41,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       user,
       loading,
       signOutUser: async () => {
+        localStorage.removeItem("demoUser");
         await signOut(auth);
+        setUser(null);
       },
+      demoLogin: (role: "worker" | "admin") => {
+        localStorage.setItem("demoUser", role);
+        setUser({ uid: `demo_${role}`, email: `demo@${role}.com` } as User);
+      }
     }),
     [user, loading],
   );

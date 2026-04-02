@@ -12,6 +12,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
   return (
@@ -25,11 +26,15 @@ function App() {
               <Route path="/register" element={<Register />} />
               <Route path="/terms" element={<Terms />} />
               <Route path="/privacy" element={<Privacy />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/calculator" element={<Calculator />} />
-              <Route path="/claim-tracker" element={<ClaimTracker />} />
-              <Route path="/risk-prediction" element={<RiskPrediction />} />
-              <Route path="/admin" element={<Admin />} />
+              
+              {/* Protected Routes */}
+              <Route element={<ProtectedRoute />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/calculator" element={<Calculator />} />
+                <Route path="/claim-tracker" element={<ClaimTracker />} />
+                <Route path="/risk-prediction" element={<RiskPrediction />} />
+                <Route path="/admin" element={<Admin />} />
+              </Route>
             </Route>
           </Routes>
         </BrowserRouter>

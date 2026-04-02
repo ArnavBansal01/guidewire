@@ -88,7 +88,7 @@ const AnimatedStatValue = ({
 };
 
 const Landing = () => {
-  const { user, signOutUser } = useAuth();
+  const { user } = useAuth();
   const stats = [
     {
       label: "Average Payout Time",
@@ -246,13 +246,13 @@ const Landing = () => {
       <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiMwMDAwMDAiIGZpbGwtb3BhY2l0eT0iMC4wMyI+PHBhdGggZD0iTTM2IDM0djItSDI0di0yaDE2em0wLTEwdjJIMjR2LTJoMTZ6bTAtMTB2MkgyNHYtMmgxNnoiLz48L2c+PC9nPjwvc3ZnPg==')] dark:opacity-20 -z-10" />
 
       {/* Hero Section */}
-      <section className="relative pt-6 pb-12 lg:pt-12 lg:pb-16 px-4 sm:px-6 lg:px-8">
+      <section className="relative pt-2 pb-12 lg:pt-4 lg:pb-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-8 items-center">
             {/* Left Side: Text & CTA */}
             <div className="text-left order-2 lg:order-1 flex flex-col items-center lg:items-start">
               <div className="w-full flex justify-center lg:justify-start">
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-cyan-500/10 to-emerald-500/10 border border-cyan-500/20 dark:border-cyan-500/30 mb-8 mt-4 lg:mt-0">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-cyan-500/10 to-emerald-500/10 border border-cyan-500/20 dark:border-cyan-500/30 mb-8">
                   <Shield className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
                   <span className="text-sm font-medium text-cyan-700 dark:text-cyan-300">
                     Autonomous Income Protection
@@ -260,7 +260,7 @@ const Landing = () => {
                 </div>
               </div>
 
-              <h1 className="text-3xl sm:text-6xl lg:text-5xl xl:text-8xl font-black mb-6 leading-[1.1] tracking-tighter text-slate-900 dark:text-white text-center lg:text-left">
+              <h1 className="text-4xl sm:text-6xl lg:text-6xl xl:text-7xl font-black mb-6 leading-[1.05] tracking-tighter text-slate-900 dark:text-white text-center lg:text-left">
                 Shield your earnings. <br />
                 Smart. Simple. <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-emerald-500">
@@ -301,15 +301,12 @@ const Landing = () => {
                     Get Protected Now
                   </Link>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void signOutUser();
-                    }}
-                    className="w-full sm:w-auto px-8 py-4 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-bold rounded-lg shadow hover:shadow-lg transition-all border border-slate-200 dark:border-slate-700 text-lg"
+                  <Link
+                    to="/dashboard"
+                    className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-cyan-500 to-emerald-500 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all text-lg text-center"
                   >
-                    Sign Out
-                  </button>
+                    Go to Dashboard
+                  </Link>
                 )}
                 <button
                   onClick={() =>

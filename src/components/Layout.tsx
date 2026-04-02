@@ -5,7 +5,13 @@ import BottomMobileNav from "./BottomMobileNav";
 
 const Layout = () => {
   const location = useLocation();
-  const hiddenNavigationRoutes = ["/login", "/register", "/terms", "/privacy"];
+  const hiddenNavigationRoutes = [
+    "/login",
+    "/register",
+    "/terms",
+    "/privacy",
+    "/admin",
+  ];
   const hideNavigation = hiddenNavigationRoutes.includes(location.pathname);
   const showBottomMobileNav = !hideNavigation;
 
