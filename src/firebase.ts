@@ -2,7 +2,7 @@ import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
 
-import { getAuth, GoogleAuthProvider } from "firebase/auth"; // Add these
+import { getAuth, GoogleAuthProvider, setPersistence, browserLocalPersistence } from "firebase/auth"; // Add these
 // Your web app's Firebase configuration
 // Make sure these match the variables in your .env file!
 const firebaseConfig = {
@@ -20,4 +20,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
+
+// Explicitly set persistence to fix Vite/React session dropping on refresh
+setPersistence(auth, browserLocalPersistence).catch((error) => {
+  console.error("Firebase persistence error:", error);
+});
+
 export const googleProvider = new GoogleAuthProvider();
