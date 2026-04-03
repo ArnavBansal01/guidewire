@@ -1,26 +1,37 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Zap, ArrowRight } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Link,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
+import { Sparkles, Zap, ArrowRight, WifiOff } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
-import { useEffect } from "react";
+import { getFriendlyAuthError, type AuthUiError } from "../utils/authError";
 
 // Firebase Imports
 import { auth, db, googleProvider } from "../firebase";
 import { signInWithPopup } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import BrandLoader from "../components/BrandLoader";
 
 // Data Imports
+import { DEMO_WORKER_DEFAULT_PROFILE } from "../data/demoProfile";
 import { cities } from "../mockData";
 import { partners } from "../data/partners";
 
 const Register = () => {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const location = useLocation();
+  const { user, loading: authLoading, demoLogin } = useAuth();
+  const [searchParams] = useSearchParams();
+  const isDemoWorkerMode = searchParams.get("mode") === "demo-worker";
 
   // Manage whether we are showing the Google button (1) or the details form (2)
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [authUser, setAuthUser] = useState<any>(null); // Stores Google user data temporarily
+  const [authError, setAuthError] = useState<AuthUiError | null>(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -28,6 +39,24 @@ const Register = () => {
     city: "",
     platform: "",
   });
+
+  const demoPrefill = useMemo(
+    () => ({
+      name: DEMO_WORKER_DEFAULT_PROFILE.fullName || "Demo Worker",
+      phone: DEMO_WORKER_DEFAULT_PROFILE.phone || "9999999999",
+      city: DEMO_WORKER_DEFAULT_PROFILE.city || "",
+      platform: DEMO_WORKER_DEFAULT_PROFILE.platform || "",
+    }),
+    [],
+  );
+
+  useEffect(() => {
+    if (!isDemoWorkerMode) return;
+
+    setStep(2);
+    setAuthError(null);
+    setFormData(demoPrefill);
+  }, [isDemoWorkerMode, demoPrefill]);
 
   // Check if a user landed here with a dangling Firebase session but no Firestore profile
   useEffect(() => {
@@ -65,6 +94,7 @@ const Register = () => {
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
+      setAuthError(null);
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
 
@@ -83,7 +113,7 @@ const Register = () => {
       }
     } catch (error) {
       console.error("Error signing in with Google:", error);
-      alert("Registration failed. Please try again.");
+      setAuthError(getFriendlyAuthError(error, "register"));
     } finally {
       setLoading(false);
     }
@@ -92,10 +122,61 @@ const Register = () => {
   // STEP 2: Handle Final Form Submission to Firestore
   const handleFinalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isDemoWorkerMode) {
+      setLoading(true);
+      setAuthError(null);
+      const demoProfile = {
+        uid: DEMO_WORKER_DEFAULT_PROFILE.uid,
+        email: DEMO_WORKER_DEFAULT_PROFILE.email,
+        fullName: formData.name,
+        phone: formData.phone,
+        city: formData.city,
+        platform: formData.platform,
+        trustScore: DEMO_WORKER_DEFAULT_PROFILE.trustScore,
+        avgDailyIncome: DEMO_WORKER_DEFAULT_PROFILE.avgDailyIncome,
+        avgDailyDeliveries: DEMO_WORKER_DEFAULT_PROFILE.avgDailyDeliveries,
+        role: DEMO_WORKER_DEFAULT_PROFILE.role,
+        updatedAt: serverTimestamp(),
+        policyStatus: DEMO_WORKER_DEFAULT_PROFILE.policyStatus,
+        activePlan: DEMO_WORKER_DEFAULT_PROFILE.activePlan,
+        weeklyPremium: DEMO_WORKER_DEFAULT_PROFILE.weeklyPremium,
+      };
+
+      try {
+        await setDoc(
+          doc(db, "users", DEMO_WORKER_DEFAULT_PROFILE.uid),
+          demoProfile,
+          {
+            merge: true,
+          },
+        );
+        localStorage.setItem(
+          "dbUser",
+          JSON.stringify({
+            ...demoProfile,
+            updatedAt: new Date().toISOString(),
+          }),
+        );
+        localStorage.setItem("isRegistered", "true");
+        if (demoLogin) {
+          demoLogin("worker");
+        }
+        navigate("/dashboard");
+      } catch (error) {
+        console.error("Error saving demo profile to Firestore:", error);
+        setAuthError(getFriendlyAuthError(error, "profile-save"));
+        setLoading(false);
+        return;
+      }
+      setLoading(false);
+      return;
+    }
+
     if (!authUser) return;
 
     try {
       setLoading(true);
+      setAuthError(null);
 
       // Save all details to Firestore under the 'users' collection using their secure UID
       await setDoc(doc(db, "users", authUser.uid), {
@@ -114,18 +195,14 @@ const Register = () => {
       navigate("/dashboard");
     } catch (error) {
       console.error("Error saving user details:", error);
-      alert("Could not save details. Please try again.");
+      setAuthError(getFriendlyAuthError(error, "profile-save"));
     } finally {
       setLoading(false);
     }
   };
 
-  if (authLoading || (user && step === 1 && loading)) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
-      </div>
-    );
+  if (!isDemoWorkerMode && (authLoading || (user && step === 1 && loading))) {
+    return <BrandLoader message="Preparing your profile..." />;
   }
 
   return (
@@ -182,7 +259,19 @@ const Register = () => {
             </h1>
           </div>
 
-          <div className="w-full bg-white dark:bg-slate-900/60 backdrop-blur-xl p-8 lg:p-10 rounded-[32px] shadow-2xl border border-slate-200 dark:border-slate-800 transition-all duration-300">
+          <div className="w-full bg-white dark:bg-slate-900/60 backdrop-blur-xl p-8 lg:p-10 rounded-[32px] shadow-2xl border border-slate-200 dark:border-slate-800 transition-all duration-300 relative overflow-hidden">
+            {loading && (
+              <div className="absolute inset-0 z-50 rounded-[32px] bg-white/90 dark:bg-slate-950/90 backdrop-blur-md">
+                <BrandLoader
+                  message={
+                    step === 1
+                      ? "Checking your account..."
+                      : "Saving profile..."
+                  }
+                />
+              </div>
+            )}
+
             <div className="text-center mb-8">
               <div className="inline-flex p-3 bg-gradient-to-br from-cyan-500 to-emerald-500 rounded-xl mb-4 shadow-lg shadow-cyan-500/20">
                 <Zap className="w-8 h-8 text-white" />
@@ -198,6 +287,29 @@ const Register = () => {
                 </p>
               </div>
             </div>
+
+            {authError && (
+              <div className="mb-5 rounded-2xl border border-amber-200/80 dark:border-amber-900/60 bg-amber-50/70 dark:bg-amber-950/30 px-4 py-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/50">
+                    <WifiOff className="h-4 w-4 text-amber-700 dark:text-amber-300" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-amber-900 dark:text-amber-200">
+                      {authError.title}
+                    </p>
+                    <p className="text-sm text-amber-800/90 dark:text-amber-300/90 mt-0.5">
+                      {authError.message}
+                    </p>
+                    {authError.hint && (
+                      <p className="text-xs text-amber-700 dark:text-amber-300/80 mt-1.5">
+                        Tip: {authError.hint}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* --- UI FOR STEP 1: GOOGLE AUTH --- */}
             {step === 1 && (
@@ -233,6 +345,25 @@ const Register = () => {
             {/* --- UI FOR STEP 2: ADDITIONAL DETAILS --- */}
             {step === 2 && (
               <form onSubmit={handleFinalSubmit} className="space-y-5">
+                {isDemoWorkerMode && (
+                  <div className="rounded-2xl border border-cyan-200/80 dark:border-cyan-700/50 bg-gradient-to-r from-cyan-50 to-emerald-50 dark:from-cyan-950/40 dark:to-emerald-950/30 p-4 shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-emerald-500 text-white shadow-lg shadow-cyan-500/25">
+                        <Sparkles className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                          Demo Worker profile is prefilled
+                        </p>
+                        <p className="text-xs text-slate-700 dark:text-slate-300 mt-1">
+                          Name, phone, city, and delivery partner are ready. You
+                          can edit any field before entering the dashboard.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-sm font-semibold mb-2 text-slate-700 dark:text-slate-300">
                     Full Name
@@ -312,13 +443,24 @@ const Register = () => {
                   disabled={loading}
                   className="w-full px-6 py-4 mt-8 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white font-bold rounded-2xl shadow-[0_8px_30px_-4px_rgba(16,185,129,0.3)] hover:shadow-[0_12px_40px_-4px_rgba(16,185,129,0.4)] transform hover:-translate-y-1 transition-all duration-300 disabled:opacity-50"
                 >
-                  {loading ? "Saving..." : "Start My AI Risk Assessment"}
+                  {loading
+                    ? "Saving..."
+                    : isDemoWorkerMode
+                      ? "Enter Demo Worker Dashboard"
+                      : "Start My AI Risk Assessment"}
                 </button>
               </form>
             )}
 
             <p className="text-xs text-slate-500 dark:text-slate-400 text-center mt-6">
-              By registering, you agree to our Terms & Privacy Policy
+              By registering, you agree to our Terms &{" "}
+              <Link
+                to="/privacy"
+                state={{ returnTo: `${location.pathname}${location.search}` }}
+                className="font-semibold text-cyan-600 hover:text-cyan-500 dark:text-cyan-400 dark:hover:text-cyan-300 transition-colors"
+              >
+                Privacy Policy
+              </Link>
             </p>
 
             {step === 1 && (

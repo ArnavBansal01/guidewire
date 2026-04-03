@@ -1,13 +1,20 @@
 import { Lock, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const Privacy = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleClose = () => {
-    navigate("/");
+    const returnTo = (location.state as { returnTo?: string } | null)?.returnTo;
+    if (returnTo) {
+      navigate(returnTo);
+      return;
+    }
+
+    navigate(-1);
   };
 
   useEffect(() => {

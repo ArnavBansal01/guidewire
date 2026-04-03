@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Shield,
   UserPlus,
   ArrowRight,
   UserCheck,
   ShieldAlert,
+  WifiOff,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { getFriendlyAuthError, type AuthUiError } from "../utils/authError";
+import BrandLoader from "../components/BrandLoader";
 
 // Firebase Imports
 import { auth, db, googleProvider } from "../firebase";
@@ -16,9 +19,11 @@ import { doc, getDoc } from "firebase/firestore";
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, loading: authLoading, demoLogin } = useAuth();
   const [loading, setLoading] = useState(false);
   const [demoState, setDemoState] = useState({ running: false, message: "" });
+  const [authError, setAuthError] = useState<AuthUiError | null>(null);
 
   // State to trigger our "Needs Registration" UI
   const [needsRegistration, setNeedsRegistration] = useState(false);
@@ -48,6 +53,7 @@ const Login = () => {
   const handleGoogleLogin = async () => {
     try {
       setLoading(true);
+      setAuthError(null);
       setNeedsRegistration(false); // Reset just in case
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
@@ -65,7 +71,7 @@ const Login = () => {
       }
     } catch (error) {
       console.error("Error signing in with Google:", error);
-      alert("Login failed. Please try again.");
+      setAuthError(getFriendlyAuthError(error, "login"));
     } finally {
       setLoading(false);
     }
@@ -84,12 +90,22 @@ const Login = () => {
       setTimeout(() => {
         setDemoState({ running: true, message: "Authenticating..." });
         setTimeout(() => {
+          if (role === "worker") {
+            navigate("/register?mode=demo-worker");
+            setDemoState({ running: false, message: "" });
+            return;
+          }
+
           if (demoLogin) demoLogin(role);
-          navigate(role === "admin" ? "/admin" : "/dashboard");
+          navigate("/admin");
         }, 800);
       }, 800);
     }, 800);
   };
+
+  if (authLoading && !user) {
+    return <BrandLoader message="Restoring secure access..." />;
+  }
 
   return (
     <div className="min-h-screen w-full flex flex-col lg:flex-row relative overflow-hidden bg-slate-50 dark:bg-slate-950">
@@ -145,7 +161,13 @@ const Login = () => {
             </h1>
           </div>
 
-          <div className="w-full bg-white dark:bg-slate-900/60 backdrop-blur-xl p-8 lg:p-10 rounded-[32px] shadow-2xl border border-slate-200 dark:border-slate-800 transition-all duration-300">
+          <div className="w-full bg-white dark:bg-slate-900/60 backdrop-blur-xl p-8 lg:p-10 rounded-[32px] shadow-2xl border border-slate-200 dark:border-slate-800 transition-all duration-300 relative overflow-hidden">
+            {loading && (
+              <div className="absolute inset-0 z-50 rounded-[32px] bg-white/90 dark:bg-slate-950/90 backdrop-blur-md">
+                <BrandLoader message="Verifying your login..." />
+              </div>
+            )}
+
             {/* --- DYNAMIC UI: Show this if they need to register --- */}
             {needsRegistration ? (
               <div className="text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -187,6 +209,29 @@ const Login = () => {
                   </p>
                 </div>
 
+                {authError && (
+                  <div className="mb-5 rounded-2xl border border-amber-200/80 dark:border-amber-900/60 bg-amber-50/70 dark:bg-amber-950/30 px-4 py-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/50">
+                        <WifiOff className="h-4 w-4 text-amber-700 dark:text-amber-300" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-amber-900 dark:text-amber-200">
+                          {authError.title}
+                        </p>
+                        <p className="text-sm text-amber-800/90 dark:text-amber-300/90 mt-0.5">
+                          {authError.message}
+                        </p>
+                        {authError.hint && (
+                          <p className="text-xs text-amber-700 dark:text-amber-300/80 mt-1.5">
+                            Tip: {authError.hint}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-6">
                   <button
                     onClick={handleGoogleLogin}
@@ -226,18 +271,26 @@ const Login = () => {
                     Register here
                   </Link>
                 </p>
+                <p className="text-center text-xs text-slate-500 dark:text-slate-400">
+                  By signing in, you agree to our{" "}
+                  <Link
+                    to="/privacy"
+                    state={{
+                      returnTo: `${location.pathname}${location.search}`,
+                    }}
+                    className="font-semibold text-cyan-600 hover:text-cyan-500 dark:text-cyan-400 dark:hover:text-cyan-300 transition-colors"
+                  >
+                    Privacy Policy
+                  </Link>
+                </p>
               </div>
             )}
 
             {demoState.running && (
-              <div className="absolute inset-0 z-50 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md flex flex-col items-center justify-center text-center animate-in fade-in duration-300 rounded-[32px]">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500 mb-4"></div>
-                <p className="text-xl font-bold text-slate-900 dark:text-white mb-2">
-                  {demoState.message}
-                </p>
-                <p className="text-sm text-slate-500 font-medium">
-                  Bypassing standard authentication for judges...
-                </p>
+              <div className="absolute inset-0 z-50 rounded-[32px] bg-white/90 dark:bg-slate-950/90 backdrop-blur-md">
+                <BrandLoader
+                  message={demoState.message || "Starting demo access..."}
+                />
               </div>
             )}
 

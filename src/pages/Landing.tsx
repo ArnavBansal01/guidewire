@@ -18,6 +18,7 @@ import { useState, useEffect, useRef } from "react";
 import { plans } from "../data/plans";
 import { partners } from "../data/partners";
 import { useAuth } from "../contexts/AuthContext";
+import { useUserProfile } from "../hooks/useUserProfile";
 
 const defaultFadeUp = {
   initial: { opacity: 0, y: 30 },
@@ -89,6 +90,7 @@ const AnimatedStatValue = ({
 
 const Landing = () => {
   const { user } = useAuth();
+  const { profile } = useUserProfile();
   const stats = [
     {
       label: "Average Payout Time",
@@ -207,10 +209,19 @@ const Landing = () => {
   ];
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedPlanIndex, setSelectedPlanIndex] = useState(() => {
+    const popularPlanIndex = plans.findIndex((plan) => plan.popular);
+    return popularPlanIndex >= 0 ? popularPlanIndex : 0;
+  });
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const statsSectionRef = useRef<HTMLDivElement | null>(null);
   const statsInView = useInView(statsSectionRef, { once: true, amount: 0.35 });
   const location = useLocation();
+  const hasPremiumPlan = Boolean(
+    `${profile?.activePlan ?? ""} ${profile?.activePlanName ?? ""}`
+      .toLowerCase()
+      .includes("premium"),
+  );
 
   useEffect(() => {
     const storedScroll = sessionStorage.getItem("landingScrollY");
@@ -295,17 +306,17 @@ const Landing = () => {
               <div className="flex flex-wrap gap-4 items-center justify-center lg:justify-start w-full">
                 {!user ? (
                   <Link
-                    to="/register"
+                    to="/premium"
                     className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-cyan-500 to-emerald-500 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all text-lg text-center"
                   >
-                    Get Protected Now
+                    Get Premium
                   </Link>
                 ) : (
                   <Link
-                    to="/dashboard"
+                    to="/premium"
                     className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-cyan-500 to-emerald-500 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all text-lg text-center"
                   >
-                    Go to Dashboard
+                    {hasPremiumPlan ? "View Premium" : "Get Premium"}
                   </Link>
                 )}
                 <button
@@ -903,56 +914,122 @@ const Landing = () => {
                 </p>
               </div>
 
+              <div className="mb-6 rounded-2xl border border-amber-300/70 bg-gradient-to-r from-amber-100 via-orange-50 to-cyan-50 dark:from-amber-500/15 dark:via-orange-500/10 dark:to-cyan-500/10 px-4 py-3 sm:px-5 sm:py-4 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 rounded-full bg-amber-500/15 p-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wide">
+                      Important Plan Notice
+                    </p>
+                    <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-200 leading-relaxed font-medium mt-1">
+                      Weekly premiums and payout limits are tuned in real time
+                      using your active city zone and live weather risk signals,
+                      so your protection stays fair, local, and up to date.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <div className="grid md:grid-cols-3 gap-4 lg:gap-5">
                 {plans.map((plan, i) => (
-                  <div
+                  <motion.div
                     key={i}
-                    className={`relative p-5 rounded-[24px] border ${plan.popular ? "bg-slate-900 dark:bg-white border-slate-900 dark:border-white shadow-xl scale-100 md:scale-105 z-10" : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"} flex flex-col items-start text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl`}
+                    onClick={() => setSelectedPlanIndex(i)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setSelectedPlanIndex(i);
+                      }
+                    }}
+                    tabIndex={0}
+                    role="button"
+                    aria-pressed={selectedPlanIndex === i}
+                    layout
+                    whileTap={{ scale: 0.985 }}
+                    transition={{ type: "spring", stiffness: 260, damping: 22 }}
+                    className={`group relative overflow-hidden p-5 rounded-[24px] border cursor-pointer ${selectedPlanIndex === i ? "border-cyan-500 shadow-2xl ring-2 ring-cyan-500 ring-offset-2 ring-offset-white" : "border-slate-700 shadow-xl"} ${plan.popular ? "scale-100 md:scale-105 z-10" : ""} flex flex-col items-start text-left transition-all duration-500 hover:-translate-y-1.5 hover:shadow-2xl`}
                   >
+                    <motion.div
+                      aria-hidden
+                      className="absolute inset-0 bg-white"
+                      animate={{ opacity: selectedPlanIndex === i ? 1 : 0 }}
+                      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                    />
+                    <motion.div
+                      aria-hidden
+                      className="absolute inset-0 bg-slate-950"
+                      animate={{ opacity: selectedPlanIndex === i ? 0 : 1 }}
+                      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                    />
+                    <div
+                      className={`pointer-events-none absolute inset-x-0 top-0 h-1.5 transition-colors duration-500 ${selectedPlanIndex === i ? "bg-gradient-to-r from-cyan-400 via-emerald-400 to-amber-400" : "bg-gradient-to-r from-slate-600 via-slate-500 to-slate-600"}`}
+                    />
+                    <div
+                      className={`pointer-events-none absolute -right-10 -top-14 h-36 w-36 rounded-full blur-2xl transition-opacity duration-500 ${selectedPlanIndex === i ? "bg-cyan-300/35 opacity-100" : "bg-slate-300/10 opacity-0 group-hover:opacity-100"}`}
+                    />
                     {plan.popular && (
-                      <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-amber-400 text-slate-900 text-[10px] font-black uppercase rounded-full">
+                      <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-amber-400 text-slate-900 text-[10px] font-black uppercase rounded-full shadow-md">
                         Most Popular
                       </span>
                     )}
-                    <span
-                      className={`text-[10px] font-bold ${plan.popular ? "text-cyan-400 dark:text-cyan-600" : "text-slate-400"} uppercase mb-1`}
-                    >
-                      {plan.name}
-                    </span>
-                    <div className="flex items-baseline gap-1 mb-4">
-                      <span
-                        className={`text-3xl font-black ${plan.popular ? "text-white dark:text-slate-900" : "text-slate-900 dark:text-white"}`}
-                      >
-                        {plan.price}
+                    {selectedPlanIndex === i && (
+                      <span className="absolute top-4 right-4 px-2.5 py-1 rounded-full bg-cyan-500 text-white text-[10px] font-black uppercase tracking-wide shadow-md">
+                        Selected
                       </span>
+                    )}
+                    <div className="relative z-10 w-full">
                       <span
-                        className={`text-xs ${plan.popular ? "text-slate-400" : "text-slate-500"}`}
+                        className={`text-[10px] font-bold uppercase mb-1 tracking-wider transition-colors duration-500 ${selectedPlanIndex === i ? "text-cyan-700" : "text-cyan-300"}`}
                       >
-                        /week
+                        {plan.name}
                       </span>
-                    </div>
+                      <div className="flex items-baseline gap-1 mb-4">
+                        <span
+                          className={`text-3xl font-black transition-colors duration-500 ${selectedPlanIndex === i ? "text-slate-900" : "text-white"}`}
+                        >
+                          {plan.price}
+                        </span>
+                        <span
+                          className={`text-xs transition-colors duration-500 ${selectedPlanIndex === i ? "text-slate-500" : "text-slate-300"}`}
+                        >
+                          {plan.period}
+                        </span>
+                      </div>
 
-                    <div className="space-y-2 mb-6 flex-1 w-full">
-                      {plan.features.map((feature, j) => (
-                        <div key={j} className="flex gap-2.5">
-                          <Check
-                            className={`w-4 h-4 flex-shrink-0 ${plan.popular ? "text-emerald-400" : "text-emerald-500"}`}
-                          />
-                          <span
-                            className={`text-[11px] ${plan.popular ? "text-slate-300 dark:text-slate-600" : "text-slate-600 dark:text-slate-400 font-medium"}`}
+                      <div
+                        className={`mb-4 w-full rounded-xl px-3 py-2 text-[11px] font-semibold transition-all duration-500 ${selectedPlanIndex === i ? "bg-cyan-50 border border-cyan-100 text-cyan-700" : "bg-slate-900 border border-slate-700 text-cyan-200"}`}
+                      >
+                        Intelligent risk calibration active for your region
+                      </div>
+
+                      <div className="space-y-2 mb-6 flex-1 w-full">
+                        {plan.features.map((feature, j) => (
+                          <div
+                            key={j}
+                            className={`flex gap-2.5 rounded-lg px-2 py-1 transition-colors duration-500 ${selectedPlanIndex === i ? "hover:bg-slate-100/90" : "hover:bg-white/5"}`}
                           >
-                            {feature}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                            <Check
+                              className={`w-4 h-4 flex-shrink-0 transition-colors duration-500 ${selectedPlanIndex === i ? "text-emerald-600" : "text-emerald-400"}`}
+                            />
+                            <span
+                              className={`text-[11px] transition-colors duration-500 ${selectedPlanIndex === i ? "text-slate-700" : "text-slate-200"}`}
+                            >
+                              {feature}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
 
-                    <button
-                      className={`w-full py-3 rounded-xl text-sm font-black transition-all ${plan.popular ? "bg-amber-400 text-slate-900 hover:bg-amber-300 shadow-md" : "bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100"}`}
-                    >
-                      {plan.cta} &rarr;
-                    </button>
-                  </div>
+                      <button
+                        onClick={() => setSelectedPlanIndex(i)}
+                        className={`w-full py-3 rounded-xl text-sm font-black transition-all duration-500 ${selectedPlanIndex === i ? "bg-slate-900 text-white hover:bg-slate-800 shadow-md" : "bg-white text-slate-900 hover:bg-slate-100"}`}
+                      >
+                        {selectedPlanIndex === i ? "Selected" : plan.cta} &rarr;
+                      </button>
+                    </div>
+                  </motion.div>
                 ))}
               </div>
             </motion.div>

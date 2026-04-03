@@ -10,9 +10,8 @@ import {
   Zap,
 } from "lucide-react";
 
-import { auth, db } from "../firebase";
-import { onAuthStateChanged } from "firebase/auth";
-import { doc, onSnapshot } from "firebase/firestore";
+import { useAuth } from "../contexts/AuthContext";
+import { useUserProfile } from "../hooks/useUserProfile";
 
 import {
   mockPolicy, // Keeping mockPolicy for now until we build the checkout flow
@@ -31,12 +30,9 @@ type ParametricWindowData = {
 };
 
 const Dashboard = () => {
+  const { user } = useAuth();
+  const { profile: dbUser } = useUserProfile();
   const [showClaimToast, setShowClaimToast] = useState(false);
-  const [user, setUser] = useState<any>(null);
-  const [dbUser, setDbUser] = useState<any>(() => {
-    const cached = localStorage.getItem("dbUser");
-    return cached ? JSON.parse(cached) : null;
-  });
   const [planDetails, setPlanDetails] = useState<any>(null);
   const [parametricWindow, setParametricWindow] =
     useState<ParametricWindowData | null>(() => {
@@ -44,29 +40,6 @@ const Dashboard = () => {
       return cached ? JSON.parse(cached) : null;
     });
   const [loadingParametric, setLoadingParametric] = useState(false);
-
-  useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-
-      if (currentUser) {
-        const userRef = doc(db, "users", currentUser.uid);
-        const unsubscribeUser = onSnapshot(userRef, (docSnap) => {
-          if (docSnap.exists()) {
-            const data = docSnap.data();
-            setDbUser(data);
-            localStorage.setItem("dbUser", JSON.stringify(data));
-          }
-        });
-
-        return () => unsubscribeUser();
-      }
-
-      setDbUser(null);
-    });
-
-    return () => unsubscribeAuth();
-  }, []);
 
   useEffect(() => {
     if (dbUser?.activePlan) {
@@ -134,7 +107,7 @@ const Dashboard = () => {
     };
 
     // Don't set to null here anymore - keep old data while fetching
-    // setParametricWindow(null); 
+    // setParametricWindow(null);
     fetchParametricWindow();
     const intervalId = setInterval(fetchParametricWindow, 60000);
 
@@ -363,9 +336,13 @@ const Dashboard = () => {
 
             {parametricWindow && (
               <div className="flex items-center gap-2 self-start md:self-auto px-3 py-1.5 rounded-full border border-slate-300 dark:border-slate-700 bg-slate-100/80 dark:bg-slate-800/80">
-                <span className={`h-2 w-2 rounded-full ${loadingParametric ? 'bg-cyan-500 animate-pulse' : 'bg-emerald-500'}`} />
+                <span
+                  className={`h-2 w-2 rounded-full ${loadingParametric ? "bg-cyan-500 animate-pulse" : "bg-emerald-500"}`}
+                />
                 <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                  {loadingParametric ? 'Refreshing...' : `Updated ${new Date(parametricWindow.fetchedAt).toLocaleTimeString()}`}
+                  {loadingParametric
+                    ? "Refreshing..."
+                    : `Updated ${new Date(parametricWindow.fetchedAt).toLocaleTimeString()}`}
                 </span>
               </div>
             )}
