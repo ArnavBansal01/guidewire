@@ -2,9 +2,11 @@ import { Outlet } from "react-router-dom";
 import { useLocation } from "react-router-dom";
 import Navbar from "./Navbar";
 import BottomMobileNav from "./BottomMobileNav";
+import { useAuth } from "../contexts/AuthContext";
 
 const Layout = () => {
   const location = useLocation();
+  const { user } = useAuth();
   const hiddenNavigationRoutes = [
     "/login",
     "/register",
@@ -13,7 +15,7 @@ const Layout = () => {
     "/admin",
   ];
   const hideNavigation = hiddenNavigationRoutes.includes(location.pathname);
-  const showBottomMobileNav = !hideNavigation;
+  const showBottomMobileNav = !hideNavigation && !!user;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white transition-colors">
@@ -21,6 +23,7 @@ const Layout = () => {
       <main className={showBottomMobileNav ? "pb-20 md:pb-0" : ""}>
         <Outlet />
       </main>
+
       {showBottomMobileNav && <BottomMobileNav />}
     </div>
   );

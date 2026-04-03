@@ -33,10 +33,16 @@ type ParametricWindowData = {
 const Dashboard = () => {
   const [showClaimToast, setShowClaimToast] = useState(false);
   const [user, setUser] = useState<any>(null);
-  const [dbUser, setDbUser] = useState<any>(null);
+  const [dbUser, setDbUser] = useState<any>(() => {
+    const cached = localStorage.getItem("dbUser");
+    return cached ? JSON.parse(cached) : null;
+  });
   const [planDetails, setPlanDetails] = useState<any>(null);
   const [parametricWindow, setParametricWindow] =
-    useState<ParametricWindowData | null>(null);
+    useState<ParametricWindowData | null>(() => {
+      const cached = localStorage.getItem("parametricCache");
+      return cached ? JSON.parse(cached) : null;
+    });
   const [loadingParametric, setLoadingParametric] = useState(false);
 
   useEffect(() => {
@@ -47,7 +53,9 @@ const Dashboard = () => {
         const userRef = doc(db, "users", currentUser.uid);
         const unsubscribeUser = onSnapshot(userRef, (docSnap) => {
           if (docSnap.exists()) {
-            setDbUser(docSnap.data());
+            const data = docSnap.data();
+            setDbUser(data);
+            localStorage.setItem("dbUser", JSON.stringify(data));
           }
         });
 
@@ -102,14 +110,17 @@ const Dashboard = () => {
           return;
         }
 
-        setParametricWindow({
+        const parametricData = {
           temp: Number(data?.liveData?.temp ?? 0),
           rainProb: Number(data?.liveData?.rainProb ?? 0),
           aqi: Number(data?.liveData?.aqi ?? 0),
           finalPremium: Number(data?.finalPremium ?? 0),
           breakdown: Array.isArray(data?.breakdown) ? data.breakdown : [],
           fetchedAt: Date.now(),
-        });
+        };
+
+        setParametricWindow(parametricData);
+        localStorage.setItem("parametricCache", JSON.stringify(parametricData));
       } catch (error) {
         console.error("Error fetching parametric window:", error);
         if (isMounted) {
@@ -122,7 +133,8 @@ const Dashboard = () => {
       }
     };
 
-    setParametricWindow(null);
+    // Don't set to null here anymore - keep old data while fetching
+    // setParametricWindow(null); 
     fetchParametricWindow();
     const intervalId = setInterval(fetchParametricWindow, 60000);
 
@@ -349,18 +361,17 @@ const Dashboard = () => {
               </p>
             </div>
 
-            {!loadingParametric && parametricWindow && (
+            {parametricWindow && (
               <div className="flex items-center gap-2 self-start md:self-auto px-3 py-1.5 rounded-full border border-slate-300 dark:border-slate-700 bg-slate-100/80 dark:bg-slate-800/80">
-                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className={`h-2 w-2 rounded-full ${loadingParametric ? 'bg-cyan-500 animate-pulse' : 'bg-emerald-500'}`} />
                 <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                  Updated{" "}
-                  {new Date(parametricWindow.fetchedAt).toLocaleTimeString()}
+                  {loadingParametric ? 'Refreshing...' : `Updated ${new Date(parametricWindow.fetchedAt).toLocaleTimeString()}`}
                 </span>
               </div>
             )}
           </div>
 
-          {loadingParametric && (
+          {loadingParametric && !parametricWindow && (
             <div className="relative z-10 mb-8 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60">
               <div className="flex items-center gap-3 mb-3">
                 <div className="h-3 w-3 rounded-full bg-cyan-500 animate-pulse" />
@@ -375,7 +386,7 @@ const Dashboard = () => {
             </div>
           )}
 
-          {!loadingParametric && parametricWindow && (
+          {parametricWindow && (
             <>
               <div className="relative z-10 grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-5 mb-7">
                 <div className="group min-w-0 p-3.5 md:p-5 rounded-2xl border border-cyan-200/80 dark:border-cyan-700/50 bg-gradient-to-b from-white to-cyan-50/60 dark:from-slate-800/70 dark:to-slate-900/70 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-cyan-500/10 transition-all">

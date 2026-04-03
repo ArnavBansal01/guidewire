@@ -309,11 +309,28 @@ const Landing = () => {
                   </Link>
                 )}
                 <button
-                  onClick={() =>
-                    document
-                      .getElementById("how-it-works")
-                      ?.scrollIntoView({ behavior: "smooth", block: "center" })
-                  }
+                  onClick={() => {
+                    const element = document.getElementById("how-it-works");
+                    if (element) {
+                      const isMobile = window.innerWidth < 768;
+                      element.scrollIntoView({
+                        behavior: "smooth",
+                        block: isMobile ? "start" : "center",
+                      });
+                      // On mobile, add additional scroll offset after a short delay to account for navbar
+                      if (isMobile) {
+                        setTimeout(() => {
+                          const elementTop =
+                            element.getBoundingClientRect().top +
+                            window.scrollY;
+                          window.scrollTo({
+                            top: elementTop - 20,
+                            behavior: "smooth",
+                          });
+                        }, 100);
+                      }
+                    }
+                  }}
                   className="w-full sm:w-auto px-8 py-4 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-bold rounded-lg shadow hover:shadow-lg transition-all border border-slate-200 dark:border-slate-700 flex items-center justify-center text-lg"
                 >
                   See How It Works
