@@ -11,6 +11,7 @@ import { useNavigate } from "react-router-dom";
 import { cities } from "../mockData";
 import { plans } from "../data/plans";
 import { useUserProfile } from "../hooks/useUserProfile";
+import { calculateFinalPrice } from "../utils/PremiumLogic";
 
 type BreakdownItem = {
   factor: string;
@@ -379,10 +380,14 @@ const Calculator = () => {
             </h2>
             <div className="grid md:grid-cols-3 gap-6">
               {plans.map((plan) => {
-                const engineBase = 45;
-                const adjustment = result.finalPremium - engineBase;
                 const basePrice = getNumericPrice(plan.price);
-                const finalPrice = Math.max(basePrice + adjustment, 25);
+                const finalPriceResult = calculateFinalPrice({
+                  basePrice,
+                  city: formData.zone,
+                  duration: 1,
+                  riskEnginePremium: result.finalPremium,
+                });
+                const finalPrice = finalPriceResult.total;
 
                 return (
                   <div
