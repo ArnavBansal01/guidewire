@@ -38,12 +38,6 @@ const Navbar = () => {
     [userDisplayName],
   );
 
-  const hasPremiumPlan = useMemo(() => {
-    const activePlan =
-      `${profile?.activePlan ?? ""} ${profile?.activePlanName ?? ""}`.toLowerCase();
-    return activePlan.includes("premium");
-  }, [profile?.activePlan, profile?.activePlanName]);
-
   useEffect(() => {
     if (!isProfileMenuOpen) {
       return;
@@ -174,10 +168,10 @@ const Navbar = () => {
               <>
                 {location.pathname === "/" && (
                   <Link
-                    to="/premium"
+                    to="/dashboard"
                     className="hidden sm:inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base font-semibold text-slate-950 rounded-lg border border-cyan-300/70 bg-gradient-to-r from-cyan-300 via-emerald-300 to-emerald-200 shadow-[0_0_24px_rgba(45,212,191,0.45)] hover:shadow-[0_0_30px_rgba(45,212,191,0.6)] hover:-translate-y-0.5 transition-all whitespace-nowrap"
                   >
-                    {hasPremiumPlan ? "View Premium" : "Get Premium"}
+                    Dashboard
                   </Link>
                 )}
 

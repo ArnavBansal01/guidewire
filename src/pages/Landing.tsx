@@ -12,6 +12,7 @@ import {
   Wind,
   X,
   ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { motion, AnimatePresence, useInView } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
@@ -600,6 +601,64 @@ const Landing = () => {
             ))}
           </div>
         </div>
+      </section>
+
+      {/* Get Plans CTA Section */}
+      <section className="py-20 sm:py-28 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-[100px] translate-x-1/2 -translate-y-1/2" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-[100px] -translate-x-1/2 translate-y-1/2" />
+
+        <motion.div
+          {...defaultFadeUp}
+          className="max-w-4xl mx-auto relative z-10 text-center"
+        >
+          <div className="rounded-[34px] border border-white/60 dark:border-slate-700/50 bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl px-6 py-12 sm:px-10 sm:py-16 shadow-[0_28px_90px_-34px_rgba(14,116,144,0.45)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_34px_96px_-34px_rgba(14,116,144,0.55)] hover:border-cyan-300/40 dark:hover:border-cyan-500/30">
+            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.22em] text-emerald-700 dark:text-emerald-300 mb-6">
+              Ready to Get Protected?
+            </span>
+
+            <h2 className="mt-2 text-4xl sm:text-5xl font-black tracking-tight text-slate-900 dark:text-white leading-[1.05] mb-4 sm:mb-6">
+              Choose Your Plan
+              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-emerald-500">
+                and Start Earning Safe
+              </span>
+            </h2>
+
+            <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed font-medium mb-8 sm:mb-10">
+              Compare our flexible plans, see real-time pricing for your city,
+              and select the coverage that fits your needs. No upfront payment
+              required.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 items-center justify-center">
+              <Link
+                to="/premium"
+                className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-cyan-500 to-emerald-500 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all text-lg text-center flex items-center justify-center gap-2"
+              >
+                Explore Plans <ChevronRight className="w-5 h-5" />
+              </Link>
+              <button
+                onClick={() => {
+                  const element = document.getElementById("faq");
+                  if (element) {
+                    element.scrollIntoView({
+                      behavior: "smooth",
+                      block: "center",
+                    });
+                  }
+                }}
+                className="w-full sm:w-auto px-8 py-4 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-bold rounded-lg shadow hover:shadow-lg transition-all border border-slate-200 dark:border-slate-700 text-lg"
+              >
+                Learn More
+              </button>
+            </div>
+
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-6 font-medium">
+              💡 Prices automatically adjust based on your city and operational
+              costs
+            </p>
+          </div>
+        </motion.div>
       </section>
 
       {/* Testimonials Section */}
