@@ -13,11 +13,13 @@ const workersRouter = require("./routes/workers");
 const app = express();
 
 // ───────────────────── MIDDLEWARE ─────────────────────
-app.use(cors({
-  origin: ["*"],
-  methods: ["GET", "POST", "PATCH", "DELETE"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-}));
+app.use(
+  cors({
+    origin: ["*"],
+    methods: ["GET", "POST", "PATCH", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+);
 
 app.use(express.json());
 
@@ -61,7 +63,7 @@ function calculateIndianAQI(pm25) {
 }
 
 // ✅ FINAL WORKING API
-app.post('/api/calculate-premium', async (req, res) => {
+app.post("/api/calculate-premium", async (req, res) => {
   const { city, platform = "Zomato", deliveries = 20 } = req.body;
 
   if (!city) {
@@ -70,7 +72,7 @@ app.post('/api/calculate-premium', async (req, res) => {
 
   try {
     const geoRes = await axios.get(
-      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`
+      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`,
     );
 
     if (!geoRes.data.results || geoRes.data.results.length === 0) {
@@ -81,8 +83,12 @@ app.post('/api/calculate-premium', async (req, res) => {
     const lon = geoRes.data.results[0].longitude;
 
     const [weatherRes, aqiRes] = await Promise.all([
-      axios.get(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,precipitation&hourly=precipitation_probability`),
-      axios.get(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=pm2_5`)
+      axios.get(
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,precipitation&hourly=precipitation_probability`,
+      ),
+      axios.get(
+        `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=pm2_5`,
+      ),
     ]);
 
     const rainProb = weatherRes.data.hourly.precipitation_probability[0] || 0;
@@ -112,9 +118,8 @@ app.post('/api/calculate-premium', async (req, res) => {
       success: true,
       city,
       liveData: { temp, rainProb, aqi: indianAQI },
-      finalPremium
+      finalPremium,
     });
-
   } catch (error) {
     console.error("Error:", error.message);
     res.status(500).json({ error: "Failed to fetch data" });
@@ -138,9 +143,13 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ───────────────────── START SERVER ─────────────────────
-const PORT = process.env.PORT || 5000;
-require("./services/cronService");
-app.listen(PORT, () => {
-  console.log(`✅ Server running on http://localhost:${PORT}`);
-});
+// ───────────────────── START SERVER (local only) ─────────────────────
+if (require.main === module) {
+  const PORT = process.env.PORT || 5000;
+  require("./services/cronService");
+  app.listen(PORT, () => {
+    console.log(`✅ Server running on http://localhost:${PORT}`);
+  });
+}
+
+module.exports = app;
