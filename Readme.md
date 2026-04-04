@@ -2,6 +2,16 @@
 
 **DEVTrails 2026 Phase 1 Submission**
 
+## Phase Submission Portal
+
+Welcome to the official GigAssure hackathon submission index.
+
+Phase 2 Submission: We have now moved from concept design into implementation-focused execution, including backend hardening, admin intelligence workflows, and live integration progress. Review the full submission here:
+➡️ [Phase 2 Submission](phase2.md)
+
+Phase 1 Submission: For the original architecture, problem framing, risk model, and core concept documentation, review:
+➡️ [Phase 1 Submission](phase1.md)
+
 ## 1. Executive Problem & Solution Overview
 
 India’s gig economy relies on delivery partners whose daily wages are highly vulnerable to external disruptions (heavy rain, extreme heat, severe pollution, curfews). Studies show these disruptions reduce earnings by 20–30% during affected weeks.
