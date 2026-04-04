@@ -129,7 +129,7 @@ const Login = () => {
             </span>
           </h1>
           <p className="text-lg text-slate-400 font-medium leading-relaxed animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
-            Welcome back to GigShield. Instantly monitor risk triggers, manage
+            Welcome back to GigAssure. Instantly monitor risk triggers, manage
             your dynamic payouts, and secure your daily earnings.
           </p>
         </div>

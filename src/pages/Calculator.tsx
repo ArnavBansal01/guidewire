@@ -11,7 +11,11 @@ import { useNavigate } from "react-router-dom";
 import { cities } from "../mockData";
 import { plans } from "../data/plans";
 import { useUserProfile } from "../hooks/useUserProfile";
-import { calculateFinalPrice } from "../utils/PremiumLogic";
+import {
+  calculateFinalPrice,
+  getStateCompensation,
+  getStateFromCity,
+} from "../utils/PremiumLogic";
 
 type BreakdownItem = {
   factor: string;
@@ -20,6 +24,8 @@ type BreakdownItem = {
 
 type CalculatorResult = {
   finalPremium: number;
+  state?: string;
+  stateCompensation?: number;
   liveData: {
     temp: number;
     rainProb: number;
@@ -51,6 +57,12 @@ const normalizeResult = (payload: unknown): CalculatorResult => {
       Number.isFinite(data.finalPremium)
         ? data.finalPremium
         : 45,
+    state: typeof data.state === "string" ? data.state : undefined,
+    stateCompensation:
+      typeof data.stateCompensation === "number" &&
+      Number.isFinite(data.stateCompensation)
+        ? data.stateCompensation
+        : undefined,
     liveData: {
       temp:
         typeof liveData.temp === "number" && Number.isFinite(liveData.temp)
@@ -86,6 +98,37 @@ const Calculator = () => {
   const [fetchingUser, setFetchingUser] = useState(true);
   const [result, setResult] = useState<CalculatorResult | null>(null);
   const [error, setError] = useState("");
+  const pricingState = getStateFromCity(formData.zone);
+  const rainTriggered = (result?.liveData.rainProb ?? 0) > 60;
+  const heatTriggered = (result?.liveData.temp ?? 0) > 40;
+  const aqiTriggered = (result?.liveData.aqi ?? 0) > 150;
+  const activeTriggerCount = [
+    rainTriggered,
+    heatTriggered,
+    aqiTriggered,
+  ].filter(Boolean).length;
+  const riskLevel =
+    activeTriggerCount >= 2
+      ? "High"
+      : activeTriggerCount === 1
+        ? "Medium"
+        : "Low";
+  const activeTriggerLabels = [
+    rainTriggered ? "Heavy Rain" : null,
+    heatTriggered ? "Heatwave" : null,
+    aqiTriggered ? "Poor AQI" : null,
+  ].filter(Boolean) as string[];
+  const resolvedPricingState = result?.state || pricingState;
+  const stateCompensationValue = getStateCompensation(resolvedPricingState);
+  const riskReasonItems = (result?.breakdown || []).filter((item) => {
+    const factor = item.factor.toLowerCase();
+    return (
+      !factor.includes("state compensation") &&
+      !factor.includes("standard zone risk") &&
+      !factor.includes("safe zone") &&
+      !factor.includes("flood zone")
+    );
+  });
 
   // 1. AUTO-FETCH USER DATA FROM CENTRALIZED PROFILE SOURCE
   useEffect(() => {
@@ -322,26 +365,83 @@ const Calculator = () => {
                   </div>
                 </div>
 
+                <div className="mb-6 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/40 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Current Risk Level
+                    </p>
+                    <span
+                      className={`text-xs font-bold px-2 py-1 rounded-full ${
+                        riskLevel === "High"
+                          ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+                          : riskLevel === "Medium"
+                            ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                            : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                      }`}
+                    >
+                      {riskLevel}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {activeTriggerLabels.length > 0 ? (
+                      activeTriggerLabels.map((label) => (
+                        <span
+                          key={label}
+                          className="text-xs px-2.5 py-1 rounded-full border border-amber-300/80 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300"
+                        >
+                          {label} trigger active
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                        No extreme triggers active right now.
+                      </span>
+                    )}
+                  </div>
+                </div>
+
                 <div className="space-y-3">
                   <h4 className="text-xs font-bold uppercase text-slate-500">
-                    AI Factor Adjustments
+                    Pricing And Risk Factors
                   </h4>
-                  {result.breakdown.map((item, idx: number) => (
-                    <div
-                      key={idx}
-                      className="flex justify-between items-center text-sm p-2 rounded-lg bg-slate-50 dark:bg-slate-800/40"
-                    >
-                      <span className="flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-emerald-500" />{" "}
-                        {item.factor}
-                      </span>
-                      <span
-                        className={`font-mono font-bold ${item.impact.startsWith("-") ? "text-emerald-500" : item.impact === "₹0" ? "text-slate-500" : "text-amber-500"}`}
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Base plan is adjusted by state baseline compensation. Heat,
+                    rain, and AQI entries below explain risk context and may be
+                    informational (+₹0) when no active surcharge applies.
+                  </p>
+                  <div className="flex justify-between items-center text-sm p-2 rounded-lg bg-cyan-50 dark:bg-cyan-900/20 border border-cyan-200 dark:border-cyan-700/50">
+                    <span className="flex items-center gap-2 font-medium text-cyan-800 dark:text-cyan-200">
+                      <CheckCircle className="w-4 h-4 text-cyan-600 dark:text-cyan-300" />
+                      State Baseline Compensation ({resolvedPricingState})
+                    </span>
+                    <span className="font-mono font-bold text-cyan-700 dark:text-cyan-300">
+                      +₹{stateCompensationValue}
+                    </span>
+                  </div>
+                  {riskReasonItems.length > 0 ? (
+                    riskReasonItems.map((item, idx: number) => (
+                      <div
+                        key={idx}
+                        className="flex justify-between items-center text-sm p-2 rounded-lg bg-slate-50 dark:bg-slate-800/40"
                       >
-                        {item.impact}
+                        <span className="flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4 text-emerald-500" />{" "}
+                          {item.factor}
+                        </span>
+                        <span
+                          className={`font-mono font-bold ${item.impact.startsWith("-") ? "text-emerald-500" : item.impact === "₹0" || item.impact === "+₹0" ? "text-slate-500" : "text-amber-500"}`}
+                        >
+                          {item.impact}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="flex justify-between items-center text-sm p-2 rounded-lg bg-slate-50 dark:bg-slate-800/40">
+                      <span className="text-slate-500 dark:text-slate-400">
+                        No additional live surcharge currently.
                       </span>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             )}
@@ -385,9 +485,10 @@ const Calculator = () => {
                   basePrice,
                   city: formData.zone,
                   duration: 1,
-                  riskEnginePremium: result.finalPremium,
                 });
                 const finalPrice = finalPriceResult.total;
+                const stateCompensation =
+                  finalPriceResult.breakdown.stateCompensation;
 
                 return (
                   <div
@@ -413,6 +514,10 @@ const Calculator = () => {
                           {plan.period}
                         </span>
                       </div>
+                      <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                        State: {pricingState} • Compensation: ₹
+                        {stateCompensation}/week
+                      </p>
                     </div>
                     <div className="space-y-3 mb-8">
                       {plan.features.map((f, i) => (

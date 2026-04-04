@@ -266,7 +266,7 @@ const RiskPrediction = () => {
             <div>
               <h2 className="text-2xl font-bold mb-3">How Our AI Works</h2>
               <p className="text-cyan-50 mb-4">
-                GigShield's prediction engine combines multiple data sources to
+                GigAssure's prediction engine combines multiple data sources to
                 provide accurate risk assessments:
               </p>
               <ul className="space-y-2 text-sm text-cyan-50">

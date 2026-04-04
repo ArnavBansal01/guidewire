@@ -54,7 +54,7 @@ const Privacy = () => {
             1. Introduction
           </h2>
           <p>
-            At GigShield, we are committed to protecting the privacy of gig
+            At GigAssure, we are committed to protecting the privacy of gig
             economy workers. This policy outlines how we collect, use, and
             safeguard your data to provide our parametric income insurance
             services. Our core philosophy is data minimization: we only collect
@@ -99,7 +99,7 @@ const Privacy = () => {
           </h2>
           <p>
             Your data is never sold. It is used exclusively to operate the
-            GigShield platform:
+            GigAssure platform:
           </p>
           <ul className="list-disc pl-6 space-y-2">
             <li>
@@ -159,7 +159,7 @@ const Privacy = () => {
           </h2>
           <p>
             You have the right to access, correct, or delete your personal data.
-            You may withdraw consent at any time by canceling your GigShield
+            You may withdraw consent at any time by canceling your GigAssure
             subscription, though this will immediately terminate your active
             coverage.
           </p>
@@ -168,7 +168,7 @@ const Privacy = () => {
             <p>
               If you have any questions or concerns about this Privacy Policy or
               our data practices, please contact our privacy team at
-              privacy@gigshield.com.
+              privacy@GigAssure.com.
             </p>
           </div>
         </div>

@@ -49,7 +49,7 @@ const ProtectedRoute = () => {
             <Shield className="w-10 h-10 text-white" />
           </div>
           <span className="text-2xl font-bold bg-gradient-to-r from-cyan-600 to-emerald-600 bg-clip-text text-transparent">
-            GigShield
+            GigAssure
           </span>
         </div>
       </div>
@@ -70,7 +70,7 @@ const ProtectedRoute = () => {
             <Shield className="w-10 h-10 text-white" />
           </div>
           <span className="text-2xl font-bold bg-gradient-to-r from-cyan-600 to-emerald-600 bg-clip-text text-transparent">
-            GigShield
+            GigAssure
           </span>
         </div>
       </div>

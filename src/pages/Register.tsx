@@ -227,7 +227,7 @@ const Register = () => {
             </span>
           </h1>
           <p className="text-lg text-slate-400 font-medium leading-relaxed animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
-            Join the GigShield network. Get AI-powered risk assessment and
+            Join the GigAssure network. Get AI-powered risk assessment and
             autonomous instant payouts when life disrupts your hustle.
           </p>
         </div>

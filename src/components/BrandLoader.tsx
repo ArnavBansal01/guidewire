@@ -5,7 +5,7 @@ type BrandLoaderProps = {
 };
 
 const BrandLoader = ({
-  message = "Loading GigShield...",
+  message = "Loading GigAssure...",
 }: BrandLoaderProps) => {
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 px-6">
@@ -20,7 +20,7 @@ const BrandLoader = ({
 
         <div className="mt-6 space-y-2">
           <p className="text-2xl font-black tracking-tight text-white">
-            GigShield
+            GigAssure
           </p>
           <p className="text-sm font-medium text-slate-300">{message}</p>
         </div>

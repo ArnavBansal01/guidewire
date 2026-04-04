@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Shield,
   Zap,
@@ -90,6 +90,7 @@ const AnimatedStatValue = ({
 };
 
 const Landing = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { profile } = useUserProfile();
   const stats = [
@@ -185,7 +186,7 @@ const Landing = () => {
       role: "Partner · Swiggy",
       image: "/indian_gig_worker_2.png",
       quote:
-        "Intense rainfall exceeding 15mm/hr flooded my route. I was worried about my earnings, but GigShield detected the weather data and paid me ₹380 instantly.",
+        "Intense rainfall exceeding 15mm/hr flooded my route. I was worried about my earnings, but GigAssure detected the weather data and paid me ₹380 instantly.",
       amount: "₹380 received",
       reason: "Intense Rainfall",
     },
@@ -203,7 +204,7 @@ const Landing = () => {
       role: "Partner · Zomato",
       image: "/indian_gig_worker_3.png",
       quote:
-        "The severe heatwave crossed 42°C, and it wasn't safe to ride. GigShield's live monitoring confirmed the temperature and sent ₹320 right away.",
+        "The severe heatwave crossed 42°C, and it wasn't safe to ride. GigAssure's live monitoring confirmed the temperature and sent ₹320 right away.",
       amount: "₹320 received",
       reason: "Severe Heatwave",
     },
@@ -235,20 +236,42 @@ const Landing = () => {
   useEffect(() => {
     if (location.hash === "#plans") {
       setIsModalOpen(true);
-      document.body.style.overflow = "hidden";
-    } else {
-      setIsModalOpen(false);
-      document.body.style.overflow = "unset";
     }
+  }, [location.hash]);
+
+  useEffect(() => {
+    document.body.style.overflow = isModalOpen ? "hidden" : "unset";
 
     return () => {
       document.body.style.overflow = "unset";
     };
-  }, [location.hash]);
+  }, [isModalOpen]);
 
   const closeModal = () => {
-    window.location.hash = "";
     setIsModalOpen(false);
+    if (window.location.hash === "#plans") {
+      window.history.replaceState(
+        null,
+        "",
+        `${window.location.pathname}${window.location.search}`,
+      );
+    }
+  };
+
+  const openPlansModal = () => {
+    setIsModalOpen(true);
+    if (location.hash !== "#plans") {
+      window.location.hash = "plans";
+    }
+  };
+
+  const continueToPremium = () => {
+    const selectedPlan = plans[selectedPlanIndex];
+    if (selectedPlan?.name) {
+      sessionStorage.setItem("landingSelectedPlan", selectedPlan.name);
+    }
+    closeModal();
+    navigate("/premium");
   };
 
   return (
@@ -281,7 +304,7 @@ const Landing = () => {
               </h1>
 
               <p className="text-lg sm:text-xl lg:text-base xl:text-lg text-slate-600 dark:text-slate-300 mb-8 max-w-xl leading-relaxed font-medium text-center lg:text-left">
-                Platforms pause. Weather turns. GigShield settles instantly.{" "}
+                Platforms pause. Weather turns. GigAssure settles instantly.{" "}
                 <br className="hidden sm:block" />
                 Real-world triggers activate payouts automatically, no forms, no
                 follow-ups. Activate protection in under 60 seconds.
@@ -306,19 +329,21 @@ const Landing = () => {
 
               <div className="flex flex-wrap gap-4 items-center justify-center lg:justify-start w-full">
                 {!user ? (
-                  <Link
-                    to="/premium"
+                  <button
+                    type="button"
+                    onClick={openPlansModal}
                     className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-cyan-500 to-emerald-500 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all text-lg text-center"
                   >
                     Get Premium
-                  </Link>
+                  </button>
                 ) : (
-                  <Link
-                    to="/premium"
+                  <button
+                    type="button"
+                    onClick={openPlansModal}
                     className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-cyan-500 to-emerald-500 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all text-lg text-center"
                   >
                     {hasPremiumPlan ? "View Premium" : "Get Premium"}
-                  </Link>
+                  </button>
                 )}
                 <button
                   onClick={() => {
@@ -430,7 +455,7 @@ const Landing = () => {
               </h2>
 
               <p className="mt-5 text-base sm:text-xl text-slate-600 dark:text-slate-300 max-w-3xl mx-auto leading-relaxed font-medium">
-                Connect once, and GigShield does the rest, monitoring risk in
+                Connect once, and GigAssure does the rest, monitoring risk in
                 real time, validating triggers instantly, and sending payouts
                 automatically.
               </p>
@@ -561,7 +586,7 @@ const Landing = () => {
               </span>
             </h2>
             <p className="text-sm sm:text-xl text-slate-500 max-w-2xl mx-auto mt-4 sm:mt-6 px-4">
-              When conditions disrupt your workday, GigShield responds in real
+              When conditions disrupt your workday, GigAssure responds in real
               time. Our engine continuously tracks these signals to protect your
               earnings.
             </p>
@@ -631,12 +656,13 @@ const Landing = () => {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 items-center justify-center">
-              <Link
-                to="/premium"
+              <button
+                type="button"
+                onClick={openPlansModal}
                 className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-cyan-500 to-emerald-500 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all text-lg text-center flex items-center justify-center gap-2"
               >
                 Explore Plans <ChevronRight className="w-5 h-5" />
-              </Link>
+              </button>
               <button
                 onClick={() => {
                   const element = document.getElementById("faq");
@@ -749,7 +775,7 @@ const Landing = () => {
                   <span className="absolute -top-3 -left-3 sm:-top-4 sm:-left-4 text-4xl sm:text-6xl text-cyan-500/20 font-black italic">
                     "
                   </span>
-                  GigShield is built on the principle of{" "}
+                  GigAssure is built on the principle of{" "}
                   <span className="text-slate-900 dark:text-white font-black">
                     Parametric Truth
                   </span>
@@ -894,7 +920,7 @@ const Landing = () => {
       <footer className="py-12 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center">
           <h3 className="text-lg sm:text-2xl font-black mb-8 italic text-slate-400 dark:text-slate-600 text-center max-w-2xl px-4">
-            "Ride. Deliver. Earn. GigShield guards every rupee in the
+            "Ride. Deliver. Earn. GigAssure guards every rupee in the
             background."
           </h3>
           <div className="flex flex-row items-center justify-center flex-wrap gap-4 sm:gap-6 mt-4">
@@ -926,7 +952,7 @@ const Landing = () => {
             </a>
           </div>
           <p className="text-xs text-slate-400 mt-12">
-            © {new Date().getFullYear()} Gigshield Inc. All rights reserved.
+            © {new Date().getFullYear()} GigAssure Inc. All rights reserved.
           </p>
         </div>
       </footer>
@@ -1082,6 +1108,7 @@ const Landing = () => {
                       </div>
 
                       <button
+                        type="button"
                         onClick={() => setSelectedPlanIndex(i)}
                         className={`w-full py-3 rounded-xl text-sm font-black transition-all duration-500 ${selectedPlanIndex === i ? "bg-slate-900 text-white hover:bg-slate-800 shadow-md" : "bg-white text-slate-900 hover:bg-slate-100"}`}
                       >
@@ -1090,6 +1117,23 @@ const Landing = () => {
                     </div>
                   </motion.div>
                 ))}
+              </div>
+
+              <div className="mt-6 flex flex-col sm:flex-row items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="w-full sm:w-auto px-5 py-3 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold hover:bg-slate-50 dark:hover:bg-slate-900/70 transition-colors"
+                >
+                  Not Now
+                </button>
+                <button
+                  type="button"
+                  onClick={continueToPremium}
+                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 text-white font-bold hover:shadow-lg transition-all"
+                >
+                  Continue To Premium
+                </button>
               </div>
             </motion.div>
           </motion.div>

@@ -10,10 +10,10 @@ import {
   Info,
   Lock,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUserProfile } from "../hooks/useUserProfile";
-import { calculateFinalPrice } from "../utils/PremiumLogic";
+import { calculateFinalPrice, getStateFromCity } from "../utils/PremiumLogic";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../contexts/AuthContext";
@@ -28,10 +28,21 @@ type PlanData = {
   order: number;
 };
 
+type RiskContext = {
+  breakdown: Array<{ factor: string; impact: string }>;
+  liveData: {
+    temp: number;
+    rainProb: number;
+    aqi: number;
+  };
+};
+
+const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
 const PLAN_DATA: PlanData[] = [
   {
     id: "basic",
-    name: "GigShield Basic",
+    name: "GigAssure Basic",
     basePrice: 35,
     features: [
       "Maximum payout: Rs 350/week",
@@ -44,7 +55,7 @@ const PLAN_DATA: PlanData[] = [
   },
   {
     id: "standard",
-    name: "GigShield Standard",
+    name: "GigAssure Standard",
     basePrice: 50,
     features: [
       "Maximum payout: Rs 600/week",
@@ -57,7 +68,7 @@ const PLAN_DATA: PlanData[] = [
   },
   {
     id: "premium",
-    name: "GigShield Premium",
+    name: "GigAssure Premium",
     basePrice: 90,
     features: [
       "Maximum payout: Rs 1000/week",
@@ -113,14 +124,65 @@ const Premium = () => {
   const [selectedPlanId, setSelectedPlanId] = useState<PlanId | null>(null);
   const [updatingPlan, setUpdatingPlan] = useState(false);
   const [upgradeMessage, setUpgradeMessage] = useState<string>("");
+  const [riskContext, setRiskContext] = useState<RiskContext | null>(null);
 
   const city = profile?.city || "Unknown City";
+  const state = getStateFromCity(city);
   const trustScore = profile?.trustScore ?? 85;
-  const isDemoUser = profile?.uid?.startsWith("demo_");
   const activePlanId =
     normalizePlanId(profile?.activePlan) ||
     normalizePlanId(profile?.activePlanName);
   const activePlanName = profile?.activePlanName || "No Active Plan";
+
+  useEffect(() => {
+    if (!city || city === "Unknown City") {
+      setRiskContext(null);
+      return;
+    }
+
+    let isMounted = true;
+
+    const fetchRiskContext = async () => {
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/calculate-premium`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            city,
+            platform: profile?.platform || "Zomato",
+            deliveries: profile?.avgDailyDeliveries || 20,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch risk context");
+        }
+
+        const data = await response.json();
+        if (!isMounted) {
+          return;
+        }
+
+        setRiskContext({
+          breakdown: Array.isArray(data?.breakdown) ? data.breakdown : [],
+          liveData: {
+            temp: Number(data?.liveData?.temp ?? 0),
+            rainProb: Number(data?.liveData?.rainProb ?? 0),
+            aqi: Number(data?.liveData?.aqi ?? 0),
+          },
+        });
+      } catch {
+        if (isMounted) {
+          setRiskContext(null);
+        }
+      }
+    };
+
+    fetchRiskContext();
+    return () => {
+      isMounted = false;
+    };
+  }, [city, profile?.platform, profile?.avgDailyDeliveries]);
 
   const pricingByPlan = useMemo(() => {
     return PLAN_DATA.reduce(
@@ -137,15 +199,15 @@ const Premium = () => {
   }, [city]);
 
   const premiumBreakdown = pricingByPlan.premium.breakdown;
-
-  const pricingSummary = useMemo(() => {
-    const totals = PLAN_DATA.map((plan) => pricingByPlan[plan.id].total);
-    const avgPrice = Math.round(
-      totals.reduce((sum, item) => sum + item, 0) / totals.length,
+  const riskReasonItems = (riskContext?.breakdown || []).filter((item) => {
+    const factor = item.factor.toLowerCase();
+    return (
+      !factor.includes("state compensation") &&
+      !factor.includes("standard zone risk") &&
+      !factor.includes("safe zone") &&
+      !factor.includes("flood zone")
     );
-    const maxPrice = Math.max(...totals);
-    return { avgPrice, maxPrice };
-  }, [pricingByPlan]);
+  });
 
   const getPlanButtonState = (planId: PlanId) => {
     if (!activePlanId) {
@@ -267,7 +329,7 @@ const Premium = () => {
                       <Zap className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
                     </div>
                     <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white uppercase tracking-wide">
-                      Pricing for {city}
+                      Pricing for {state}
                     </h2>
                   </div>
                   <div className="relative">
@@ -296,19 +358,44 @@ const Premium = () => {
                             Base: Rs {premiumBreakdown.basePrice}
                           </p>
                           <p>
-                            City Adjustment: Rs{" "}
-                            {premiumBreakdown.cityAdjustment >= 0 ? "+" : ""}
-                            {premiumBreakdown.cityAdjustment}
+                            State Compensation: Rs{" "}
+                            {premiumBreakdown.stateCompensation >= 0 ? "+" : ""}
+                            {premiumBreakdown.stateCompensation}
                           </p>
                           <p className="mt-1 text-slate-600 dark:text-slate-300">
                             Equation: Rs {premiumBreakdown.basePrice} + Rs
-                            {premiumBreakdown.cityAdjustment >= 0 ? "+" : ""}
-                            {premiumBreakdown.cityAdjustment} = Rs{" "}
+                            {premiumBreakdown.stateCompensation >= 0 ? "+" : ""}
+                            {premiumBreakdown.stateCompensation} = Rs{" "}
                             {premiumBreakdown.weeklyPrice}
                           </p>
                           <p className="mt-1 border-t border-slate-200 dark:border-slate-700 pt-1 font-semibold text-cyan-700 dark:text-cyan-200">
                             Total: Rs {premiumBreakdown.weeklyPrice}/week
                           </p>
+                          <p className="mt-2 text-slate-500 dark:text-slate-400">
+                            Why adjusted: base + state baseline compensation.
+                            Live weather and AQI explain risk context and can be
+                            +₹0 when no trigger surcharge is active.
+                          </p>
+                          <p className="mt-1 text-slate-500 dark:text-slate-400">
+                            State Baseline Compensation ({state}): +Rs
+                            {premiumBreakdown.stateCompensation}
+                          </p>
+                          {riskReasonItems.length > 0 ? (
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              {riskReasonItems.map((item, idx) => (
+                                <span
+                                  key={idx}
+                                  className="rounded-full border border-amber-300/70 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 text-[11px] text-amber-700 dark:text-amber-300"
+                                >
+                                  {item.factor} ({item.impact})
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="mt-1 text-slate-500 dark:text-slate-400">
+                              No extreme heat/rain/AQI trigger right now.
+                            </p>
+                          )}
                         </motion.div>
                       )}
                     </AnimatePresence>
@@ -328,8 +415,8 @@ const Premium = () => {
                         </p>
                         <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
                           Rs {breakdown.basePrice} + Rs
-                          {breakdown.cityAdjustment >= 0 ? "+" : ""}
-                          {breakdown.cityAdjustment} =
+                          {breakdown.stateCompensation >= 0 ? "+" : ""}
+                          {breakdown.stateCompensation} =
                           <span className="font-extrabold text-slate-900 dark:text-white">
                             {" "}
                             Rs {breakdown.weeklyPrice}/week
@@ -340,10 +427,7 @@ const Premium = () => {
                   })}
                 </div>
 
-                <p className="mt-4 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Avg weekly price: Rs {pricingSummary.avgPrice}. Max plan: Rs{" "}
-                  {pricingSummary.maxPrice}.{isDemoUser && " (Demo Mode)"}
-                </p>
+                <p className="mt-4 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed"></p>
               </motion.div>
             </div>
 
@@ -473,7 +557,7 @@ const Premium = () => {
 
                         <div className="rounded-[14px] p-3 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60">
                           <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                            Base + city adjustment
+                            Base + state compensation
                           </p>
                           <div className="mt-1 flex items-end justify-between gap-2">
                             <p className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
@@ -483,10 +567,10 @@ const Premium = () => {
                           </div>
                           <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
                             Rs {priceResult.breakdown.basePrice} + Rs
-                            {priceResult.breakdown.cityAdjustment >= 0
+                            {priceResult.breakdown.stateCompensation >= 0
                               ? "+"
                               : ""}
-                            {priceResult.breakdown.cityAdjustment}
+                            {priceResult.breakdown.stateCompensation}
                           </p>
                         </div>
 

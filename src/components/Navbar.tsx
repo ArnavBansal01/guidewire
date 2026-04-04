@@ -86,7 +86,7 @@ const Navbar = () => {
               <Shield className="w-6 h-6 text-white" />
             </div>
             <span className="text-xl font-bold bg-gradient-to-r from-cyan-600 to-emerald-600 bg-clip-text text-transparent">
-              GigShield
+              GigAssure
             </span>
           </Link>
 

@@ -12,6 +12,7 @@ import {
 
 import { useAuth } from "../contexts/AuthContext";
 import { useUserProfile } from "../hooks/useUserProfile";
+import { getStateCompensation, getStateFromCity } from "../utils/PremiumLogic";
 
 import {
   mockPolicy, // Keeping mockPolicy for now until we build the checkout flow
@@ -20,7 +21,20 @@ import { plans } from "../data/plans";
 
 const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
+const getNextFriday = (date: Date) => {
+  const nextFriday = new Date(date);
+  const dayOfWeek = nextFriday.getDay();
+  const daysUntilFriday = (5 - dayOfWeek + 7) % 7 || 7;
+
+  nextFriday.setDate(nextFriday.getDate() + daysUntilFriday);
+  nextFriday.setHours(0, 0, 0, 0);
+
+  return nextFriday;
+};
+
 type ParametricWindowData = {
+  state: string;
+  stateCompensation: number;
   temp: number;
   rainProb: number;
   aqi: number;
@@ -34,12 +48,19 @@ const Dashboard = () => {
   const { profile: dbUser } = useUserProfile();
   const [showClaimToast, setShowClaimToast] = useState(false);
   const [planDetails, setPlanDetails] = useState<any>(null);
+  const [now, setNow] = useState(() => new Date());
   const [parametricWindow, setParametricWindow] =
     useState<ParametricWindowData | null>(() => {
       const cached = localStorage.getItem("parametricCache");
       return cached ? JSON.parse(cached) : null;
     });
   const [loadingParametric, setLoadingParametric] = useState(false);
+
+  useEffect(() => {
+    const intervalId = setInterval(() => setNow(new Date()), 60000);
+
+    return () => clearInterval(intervalId);
+  }, []);
 
   useEffect(() => {
     if (dbUser?.activePlan) {
@@ -83,7 +104,15 @@ const Dashboard = () => {
           return;
         }
 
+        const fallbackState = getStateFromCity(dbUser?.city || "");
+
         const parametricData = {
+          state: typeof data?.state === "string" ? data.state : fallbackState,
+          stateCompensation:
+            typeof data?.stateCompensation === "number" &&
+            Number.isFinite(data.stateCompensation)
+              ? data.stateCompensation
+              : getStateCompensation(fallbackState),
           temp: Number(data?.liveData?.temp ?? 0),
           rainProb: Number(data?.liveData?.rainProb ?? 0),
           aqi: Number(data?.liveData?.aqi ?? 0),
@@ -122,9 +151,21 @@ const Dashboard = () => {
     setTimeout(() => setShowClaimToast(false), 5000);
   };
 
-  const daysUntilLock = Math.ceil(
-    (new Date(mockPolicy.nextLockDate).getTime() - new Date().getTime()) /
-      (1000 * 60 * 60 * 24),
+  const nextCoverageWindow = getNextFriday(now);
+  const daysUntilLock = Math.max(
+    0,
+    Math.ceil(
+      (nextCoverageWindow.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+    ),
+  );
+  const nextCoverageWindowLabel = nextCoverageWindow.toLocaleDateString(
+    undefined,
+    {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    },
   );
 
   const hasActivePlan = Boolean(dbUser?.activePlan || dbUser?.hasActivePolicy);
@@ -140,6 +181,9 @@ const Dashboard = () => {
   const aqiProgress = Math.min((aqiValue / 200) * 100, 100);
   const tempValue = parametricWindow?.temp ?? 0;
   const tempProgress = Math.min((tempValue / 45) * 100, 100);
+  const compensationReasons = (parametricWindow?.breakdown || []).filter(
+    (item) => !item.factor.startsWith("State Compensation"),
+  );
 
   return (
     <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
@@ -202,11 +246,8 @@ const Dashboard = () => {
                         Coverage Window Lock
                       </h3>
                       <p className="text-sm text-amber-800 dark:text-amber-400">
-                        Next cycle locks in{" "}
-                        <span className="font-bold">{daysUntilLock} days</span>{" "}
-                        to prevent weather-gaming. Adjust your plan before{" "}
-                        {new Date(mockPolicy.nextLockDate).toLocaleDateString()}
-                        .
+                        Window runs from Monday and locks in {daysUntilLock}{" "}
+                        days on {nextCoverageWindowLabel}.
                       </p>
                     </div>
                   </div>
@@ -501,21 +542,37 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              {parametricWindow.breakdown.length > 0 && (
+              {parametricWindow && (
                 <div className="relative z-10 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/90 dark:bg-slate-800/50">
                   <p className="text-sm font-semibold mb-2 text-slate-800 dark:text-slate-200">
-                    Premium Breakdown
+                    State Compensation
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    {parametricWindow.breakdown.map(
-                      (item: any, idx: number) => (
+                    <span className="text-xs px-3 py-1 rounded-full border border-slate-300 dark:border-slate-600 bg-white/80 dark:bg-slate-900/80 text-slate-700 dark:text-slate-300">
+                      State: {parametricWindow.state}
+                    </span>
+                    <span className="text-xs px-3 py-1 rounded-full border border-slate-300 dark:border-slate-600 bg-white/80 dark:bg-slate-900/80 text-slate-700 dark:text-slate-300">
+                      Compensation: ₹{parametricWindow.stateCompensation}/week
+                    </span>
+                  </div>
+                  <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                    Why compensated: based on state baseline exposure and live
+                    risk signals.
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {compensationReasons.length > 0 ? (
+                      compensationReasons.map((item, idx) => (
                         <span
                           key={idx}
-                          className="text-xs px-3 py-1 rounded-full border border-slate-300 dark:border-slate-600 bg-white/80 dark:bg-slate-900/80 text-slate-700 dark:text-slate-300"
+                          className="text-xs px-3 py-1 rounded-full border border-amber-300/70 dark:border-amber-700/60 bg-amber-50/90 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300"
                         >
-                          {item.factor}: {item.impact}
+                          {item.factor}
                         </span>
-                      ),
+                      ))
+                    ) : (
+                      <span className="text-xs px-3 py-1 rounded-full border border-slate-300 dark:border-slate-600 bg-white/80 dark:bg-slate-900/80 text-slate-600 dark:text-slate-400">
+                        No extreme heat/rain/AQI trigger right now.
+                      </span>
                     )}
                   </div>
                 </div>

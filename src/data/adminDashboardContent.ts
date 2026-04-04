@@ -79,7 +79,7 @@ export const sampleAdminUsers = [
     platform: "Amazon Flex",
     city: "Delhi",
     trustScore: 100,
-    activePlan: "GigShield Standard",
+    activePlan: "GigAssure Standard",
   },
   {
     id: "sample-2",
@@ -89,7 +89,7 @@ export const sampleAdminUsers = [
     platform: "Porter",
     city: "Bangalore",
     trustScore: 100,
-    activePlan: "GigShield Premium",
+    activePlan: "GigAssure Premium",
   },
   {
     id: "sample-3",

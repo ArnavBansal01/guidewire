@@ -47,8 +47,8 @@ const Terms = () => {
             1. Agreement to Terms
           </h2>
           <p>
-            By accessing or using GigShield ("the Service"), you agree to be
-            bound by these Terms and Conditions. GigShield is exclusively a
+            By accessing or using GigAssure ("the Service"), you agree to be
+            bound by these Terms and Conditions. GigAssure is exclusively a
             parametric income insurance platform for gig economy workers.{" "}
             <strong>
               We strictly exclude coverage for health, personal accidents, or
@@ -87,7 +87,7 @@ const Terms = () => {
             3. Weekly Cycle & Enrollment Blackout
           </h2>
           <p>
-            GigShield operates on a Universal Fixed Weekly Cycle (Monday 12:00
+            GigAssure operates on a Universal Fixed Weekly Cycle (Monday 12:00
             AM to Sunday 11:59 PM).
           </p>
           <ul className="list-disc pl-6 space-y-2">
@@ -162,7 +162,7 @@ const Terms = () => {
           <div className="mt-12 pt-8 border-t border-slate-200 dark:border-slate-800 text-sm">
             <p>
               If you have any questions about these Terms, please contact us at
-              legal@gigshield.com.
+              legal@GigAssure.com.
             </p>
           </div>
         </div>
