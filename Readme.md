@@ -1,6 +1,5 @@
 # 🛡️ GigAssure: AI-Powered Parametric Income Insurance for Gig Workers
 
-**DEVTrails 2026 Phase 1 Submission**
 
 ## Phase Submission Portal
 
