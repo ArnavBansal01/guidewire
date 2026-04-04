@@ -17,7 +17,10 @@ import {
   threatSignals,
   claimsTableRows,
 } from "../data/adminDashboardContent";
-import { fetchAdminDashboardData, fetchSystemIntelligence } from "../services/adminService";
+import {
+  fetchAdminDashboardData,
+  fetchSystemIntelligence,
+} from "../services/adminService";
 import { buildInitialAdminTerminalLogs } from "../services/adminConsoleService";
 import type { AdminStats, UserProfile } from "../types/domain";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -104,10 +107,9 @@ const Admin = () => {
   } = useQuery({
     queryKey: ["claims"],
     queryFn: getClaims,
-    refetchInterval: 3000,       
-  refetchOnWindowFocus: true, 
-  staleTime: 0, 
-
+    refetchInterval: 3000,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   // ── APPROVE MUTATION ──
@@ -324,10 +326,7 @@ const Admin = () => {
       });
     } catch (error) {
       console.error("Error publishing threat:", error);
-      setTerminalLogs((prev) => [
-        ...prev,
-        "[ERROR] Threat event sync failed.",
-      ]);
+      setTerminalLogs((prev) => [...prev, "[ERROR] Threat event sync failed."]);
     }
   };
 
@@ -364,7 +363,11 @@ const Admin = () => {
             </div>
             <div className="nav-right">
               <div className="nav-badge">Admin Access Only</div>
-              <button className="theme-toggle" type="button" onClick={toggleTheme}>
+              <button
+                className="theme-toggle"
+                type="button"
+                onClick={toggleTheme}
+              >
                 {theme === "dark" ? "Light Theme" : "Dark Theme"}
               </button>
               <button
@@ -396,62 +399,189 @@ const Admin = () => {
                 subtitle="Control center for system health, fraud detection, and hackathon demonstrations. Phase 1 foundation active with 9 registered admin modules."
               />
               <div className="kpi-grid">
-                <Kpi tone="green" icon="👥" label="Active Users" value={intelLoading ? "..." : String(intel?.health.activeUsers || 0)} sub="System Health" />
-                <Kpi tone="teal" icon="🛡️" label="Active Policies" value={intelLoading ? "..." : String(intel?.health.activePolicies || 0)} sub="System Health" />
-                <Kpi tone="yellow" icon="⚠️" label="Fraud Alerts" value={intelLoading ? "..." : String(intel?.fraud.suspiciousClaims || 0)} sub="Threat Detection" />
-                <Kpi tone="orange" icon="🌩️" label="High Risk Cities" value={intelLoading ? "..." : String(intel?.environment.highRiskCities || 0)} sub="Environment" />
+                <Kpi
+                  tone="green"
+                  icon="👥"
+                  label="Active Users"
+                  value={
+                    intelLoading
+                      ? "..."
+                      : String(intel?.health.activeUsers || 0)
+                  }
+                  sub="System Health"
+                />
+                <Kpi
+                  tone="teal"
+                  icon="🛡️"
+                  label="Active Policies"
+                  value={
+                    intelLoading
+                      ? "..."
+                      : String(intel?.health.activePolicies || 0)
+                  }
+                  sub="System Health"
+                />
+                <Kpi
+                  tone="yellow"
+                  icon="⚠️"
+                  label="Fraud Alerts"
+                  value={
+                    intelLoading
+                      ? "..."
+                      : String(intel?.fraud.suspiciousClaims || 0)
+                  }
+                  sub="Threat Detection"
+                />
+                <Kpi
+                  tone="orange"
+                  icon="🌩️"
+                  label="High Risk Cities"
+                  value={
+                    intelLoading
+                      ? "..."
+                      : String(intel?.environment.highRiskCities || 0)
+                  }
+                  sub="Environment"
+                />
               </div>
 
               <div className="two-col">
-                 <Section title="Financial & Risk Overview" tone="teal">
-                    <div className="kpi-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', marginBottom: 0 }}>
-                       <Kpi tone="green" icon="💵" label="Premium Collected" value={intelLoading ? "..." : `₹ ${intel?.financial.premiumCollected?.toLocaleString() || 0}`} sub="Total Book Value" />
-                       <Kpi tone="red" icon="💸" label="Total Payouts" value={intelLoading ? "..." : `₹ ${intel?.financial.totalPayouts?.toLocaleString() || 0}`} sub="Approved Claims" />
+                <Section title="Financial & Risk Overview" tone="teal">
+                  <div
+                    className="kpi-grid"
+                    style={{
+                      gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
+                      marginBottom: 0,
+                    }}
+                  >
+                    <Kpi
+                      tone="green"
+                      icon="💵"
+                      label="Premium Collected"
+                      value={
+                        intelLoading
+                          ? "..."
+                          : `₹ ${intel?.financial.premiumCollected?.toLocaleString() || 0}`
+                      }
+                      sub="Total Book Value"
+                    />
+                    <Kpi
+                      tone="red"
+                      icon="💸"
+                      label="Total Payouts"
+                      value={
+                        intelLoading
+                          ? "..."
+                          : `₹ ${intel?.financial.totalPayouts?.toLocaleString() || 0}`
+                      }
+                      sub="Approved Claims"
+                    />
+                  </div>
+                  <div
+                    style={{
+                      marginTop: "20px",
+                      padding: "15px",
+                      background: "rgba(0,0,0,0.2)",
+                      borderRadius: "8px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        marginBottom: "8px",
+                      }}
+                    >
+                      <span style={{ color: "var(--text-muted)" }}>
+                        Actuarial Loss Ratio
+                      </span>
+                      <span
+                        style={{
+                          color:
+                            (intel?.financial.lossRatio || 0) > 80
+                              ? "var(--red)"
+                              : "var(--teal)",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        {intelLoading
+                          ? "..."
+                          : `${intel?.financial.lossRatio || 0}%`}
+                      </span>
                     </div>
-                    <div style={{ marginTop: '20px', padding: '15px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>
-                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                          <span style={{ color: 'var(--text-muted)' }}>Actuarial Loss Ratio</span>
-                          <span style={{ color: (intel?.financial.lossRatio || 0) > 80 ? 'var(--red)' : 'var(--teal)', fontWeight: 'bold' }}>
-                            {intelLoading ? "..." : `${intel?.financial.lossRatio || 0}%`}
-                          </span>
-                       </div>
-                       <div className="score-bar">
-                         <div className="score-fill" style={{ width: `${Math.min(intel?.financial.lossRatio || 0, 100)}%`, background: (intel?.financial.lossRatio || 0) > 80 ? 'var(--red)' : 'linear-gradient(90deg, var(--teal), var(--teal2))' }} />
-                       </div>
+                    <div className="score-bar">
+                      <div
+                        className="score-fill"
+                        style={{
+                          width: `${Math.min(intel?.financial.lossRatio || 0, 100)}%`,
+                          background:
+                            (intel?.financial.lossRatio || 0) > 80
+                              ? "var(--red)"
+                              : "linear-gradient(90deg, var(--teal), var(--teal2))",
+                        }}
+                      />
                     </div>
-                 </Section>
+                  </div>
+                </Section>
 
-                 <Section title="Live Environment Risks" tone="orange">
+                <Section title="Live Environment Risks" tone="orange">
                   {intelLoading ? (
-                      <div className="sub">Loading API Telemetry...</div>
-                   ) : (
-                     <>
-                       {intel?.environment.activeDisruptions?.map((disruption: string, i: number) => (
-                         <div className="event-item" key={i}>
-                           <div className={`event-dot orange`} />
-                           <div>
-                             <div className="event-title">{disruption}</div>
-                           </div>
-                         </div>
-                       ))}
-                       <div style={{ marginTop: '20px', display: 'flex', gap: '20px' }}>
-                         <div>
-                           <div className="sub">Average AQI</div>
-                           <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--yellow)' }}>{intel?.environment.avgAqi || 0}</div>
-                         </div>
-                         <div>
-                           <div className="sub">Risk Score Index</div>
-                           <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--orange)' }}>{intel?.environment.riskScoreIndex || 0}/100</div>
-                         </div>
-                       </div>
-                     </>
-                   )}
-                 </Section>
+                    <div className="sub">Loading API Telemetry...</div>
+                  ) : (
+                    <>
+                      {intel?.environment.activeDisruptions?.map(
+                        (disruption: string, i: number) => (
+                          <div className="event-item" key={i}>
+                            <div className={`event-dot orange`} />
+                            <div>
+                              <div className="event-title">{disruption}</div>
+                            </div>
+                          </div>
+                        ),
+                      )}
+                      <div
+                        style={{
+                          marginTop: "20px",
+                          display: "flex",
+                          gap: "20px",
+                        }}
+                      >
+                        <div>
+                          <div className="sub">Average AQI</div>
+                          <div
+                            style={{
+                              fontSize: "24px",
+                              fontWeight: "bold",
+                              color: "var(--yellow)",
+                            }}
+                          >
+                            {intel?.environment.avgAqi || 0}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="sub">Risk Score Index</div>
+                          <div
+                            style={{
+                              fontSize: "24px",
+                              fontWeight: "bold",
+                              color: "var(--orange)",
+                            }}
+                          >
+                            {intel?.environment.riskScoreIndex || 0}/100
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </Section>
               </div>
 
               <div className="two-col">
-                 <Section title="Live Claim Activity" tone="teal">
-                  <div className="sub" style={{ marginBottom: '15px' }}>{intel?.activity?.recentClaimsCount || 0} claims in the last 1 hour.</div>
+                <Section title="Live Claim Activity" tone="teal">
+                  <div className="sub" style={{ marginBottom: "15px" }}>
+                    {intel?.activity?.recentClaimsCount || 0} claims in the last
+                    1 hour.
+                  </div>
                   {intelLoading ? (
                     <div className="sub">Loading events...</div>
                   ) : (
@@ -466,21 +596,38 @@ const Admin = () => {
                       </thead>
                       <tbody>
                         {intel?.activity.eventsLog?.map((event: any) => (
-                           <tr key={event.id}>
-                             <td style={{ color: "var(--text-muted)", fontSize: '11px' }}>
-                               {new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                             </td>
-                             <td>
-                               <div className="name">{event.worker}</div>
-                               <div className="sub">{event.city}</div>
-                             </td>
-                             <td>
-                               <span className={`badge ${event.status === "APPROVED" ? "green" : event.status === "PENDING" ? "yellow" : "red"}`}>
-                                 {event.status}
-                               </span>
-                             </td>
-                             <td style={{ color: "var(--yellow)", fontWeight: "bold" }}>₹{(event.amount || 0).toLocaleString()}</td>
-                           </tr>
+                          <tr key={event.id}>
+                            <td
+                              style={{
+                                color: "var(--text-muted)",
+                                fontSize: "11px",
+                              }}
+                            >
+                              {new Date(event.timestamp).toLocaleTimeString(
+                                [],
+                                { hour: "2-digit", minute: "2-digit" },
+                              )}
+                            </td>
+                            <td>
+                              <div className="name">{event.worker}</div>
+                              <div className="sub">{event.city}</div>
+                            </td>
+                            <td>
+                              <span
+                                className={`badge ${event.status === "APPROVED" ? "green" : event.status === "PENDING" ? "yellow" : "red"}`}
+                              >
+                                {event.status}
+                              </span>
+                            </td>
+                            <td
+                              style={{
+                                color: "var(--yellow)",
+                                fontWeight: "bold",
+                              }}
+                            >
+                              ₹{(event.amount || 0).toLocaleString()}
+                            </td>
+                          </tr>
                         ))}
                       </tbody>
                     </table>
@@ -488,23 +635,43 @@ const Admin = () => {
                 </Section>
                 <Section title="System Telemetry" tone="green">
                   <div className="terminal">
-                     <div className="t-sys">[SYSTEM] Backend connected. Latency: {intel?.health.apiResponseTime || 0}ms</div>
-                     <div className="t-info">[INFO] Node process uptime: {Math.floor((intel?.health.uptime || 0) / 60)} minutes</div>
-                     <div className="t-warn">[WARN] Flagged workers detected: {intel?.fraud.flaggedWorkers || 0}</div>
-                     <div className="t-warn">[WARN] High-risk claims isolated: {intel?.fraud.highRiskCount || 0}</div>
-                     <br/>
-                     <div className="t-info">Monitoring Open-Meteo integration streams [OK]</div>
-                     <div className="t-ok">GigShield Core Systems operating normally.</div>
-                     <br/>
-                     {terminalLogs.slice(-5).map((log, i) => {
-                       const lower = log.toLowerCase();
-                       let className = "t-info";
-                       if (lower.includes("[error]")) className = "t-err";
-                       if (lower.includes("[ok]")) className = "t-ok";
-                       if (lower.includes("[warn]")) className = "t-warn";
-                       if (lower.includes("[system]")) className = "t-sys";
-                       return <div key={i} className={className}>{log}</div>;
-                     })}
+                    <div className="t-sys">
+                      [SYSTEM] Backend connected. Latency:{" "}
+                      {intel?.health.apiResponseTime || 0}ms
+                    </div>
+                    <div className="t-info">
+                      [INFO] Node process uptime:{" "}
+                      {Math.floor((intel?.health.uptime || 0) / 60)} minutes
+                    </div>
+                    <div className="t-warn">
+                      [WARN] Flagged workers detected:{" "}
+                      {intel?.fraud.flaggedWorkers || 0}
+                    </div>
+                    <div className="t-warn">
+                      [WARN] High-risk claims isolated:{" "}
+                      {intel?.fraud.highRiskCount || 0}
+                    </div>
+                    <br />
+                    <div className="t-info">
+                      Monitoring Open-Meteo integration streams [OK]
+                    </div>
+                    <div className="t-ok">
+                      GigShield Core Systems operating normally.
+                    </div>
+                    <br />
+                    {terminalLogs.slice(-5).map((log, i) => {
+                      const lower = log.toLowerCase();
+                      let className = "t-info";
+                      if (lower.includes("[error]")) className = "t-err";
+                      if (lower.includes("[ok]")) className = "t-ok";
+                      if (lower.includes("[warn]")) className = "t-warn";
+                      if (lower.includes("[system]")) className = "t-sys";
+                      return (
+                        <div key={i} className={className}>
+                          {log}
+                        </div>
+                      );
+                    })}
                   </div>
                 </Section>
               </div>
@@ -521,10 +688,49 @@ const Admin = () => {
                 subtitle="Review, approve, reject, and manage all insurance claims with fraud risk indicators."
               />
               <div className="kpi-grid">
-                <Kpi tone="teal" icon="📋" label="Total Claims" value={String(claimsSource.length || 3)} sub="All time" />
-                <Kpi tone="yellow" icon="⏳" label="Pending" value={String(claimsSource.filter((c: any) => c.status === "PENDING" || c.status === "Pending").length || 3)} sub="Awaiting review" />
-                <Kpi tone="green" icon="✅" label="Approved" value={String(claimsSource.filter((c: any) => c.status === "APPROVED" || c.status === "Approved").length || 0)} sub="This month" />
-                <Kpi tone="orange" icon="❌" label="Rejected" value={String(claimsSource.filter((c: any) => c.status === "REJECTED" || c.status === "Rejected").length || 0)} sub="This month" />
+                <Kpi
+                  tone="teal"
+                  icon="📋"
+                  label="Total Claims"
+                  value={String(claimsSource.length || 3)}
+                  sub="All time"
+                />
+                <Kpi
+                  tone="yellow"
+                  icon="⏳"
+                  label="Pending"
+                  value={String(
+                    claimsSource.filter(
+                      (c: any) =>
+                        c.status === "PENDING" || c.status === "Pending",
+                    ).length || 3,
+                  )}
+                  sub="Awaiting review"
+                />
+                <Kpi
+                  tone="green"
+                  icon="✅"
+                  label="Approved"
+                  value={String(
+                    claimsSource.filter(
+                      (c: any) =>
+                        c.status === "APPROVED" || c.status === "Approved",
+                    ).length || 0,
+                  )}
+                  sub="This month"
+                />
+                <Kpi
+                  tone="orange"
+                  icon="❌"
+                  label="Rejected"
+                  value={String(
+                    claimsSource.filter(
+                      (c: any) =>
+                        c.status === "REJECTED" || c.status === "Rejected",
+                    ).length || 0,
+                  )}
+                  sub="This month"
+                />
               </div>
               <Section title="Claims Table">
                 <div className="search-bar-wrap">
@@ -563,35 +769,63 @@ const Admin = () => {
                   <tbody>
                     {claimsLoading ? (
                       <tr>
-                        <td colSpan={9} style={{ textAlign: "center", color: "var(--teal)" }}>
+                        <td
+                          colSpan={9}
+                          style={{ textAlign: "center", color: "var(--teal)" }}
+                        >
                           Loading claims...
                         </td>
                       </tr>
                     ) : filteredClaims.length === 0 ? (
                       <tr>
-                        <td colSpan={9} style={{ textAlign: "center", color: "var(--text-muted)" }}>
+                        <td
+                          colSpan={9}
+                          style={{
+                            textAlign: "center",
+                            color: "var(--text-muted)",
+                          }}
+                        >
                           No claims found
                         </td>
                       </tr>
                     ) : (
                       filteredClaims.map((claim: any) => (
                         <tr key={claim.id}>
-                          <td style={{ color: "var(--teal)", fontWeight: 700 }}>{claim.id}</td>
+                          <td style={{ color: "var(--teal)", fontWeight: 700 }}>
+                            {claim.id}
+                          </td>
                           <td>
                             <div className="name">{claim.worker}</div>
                             <div className="sub">{claim.sub}</div>
                           </td>
                           <td>{claim.city}</td>
                           <td>{claim.trigger}</td>
-                          <td style={{ color: "var(--yellow)", fontWeight: 700 }}>{claim.amount}</td>
-                          <td><span className={`badge ${claim.fraudTone}`}>{claim.fraudRisk}</span></td>
-                          <td><span className={`badge ${claim.statusTone}`}>{claim.status}</span></td>
+                          <td
+                            style={{ color: "var(--yellow)", fontWeight: 700 }}
+                          >
+                            {claim.amount}
+                          </td>
+                          <td>
+                            <span className={`badge ${claim.fraudTone}`}>
+                              {claim.fraudRisk}
+                            </span>
+                          </td>
+                          <td>
+                            <span className={`badge ${claim.statusTone}`}>
+                              {claim.status}
+                            </span>
+                          </td>
                           <td>
                             <div className="score-wrap">
                               <div className="score-bar">
-                                <div className="score-fill" style={{ width: `${claim.confidence}%` }} />
+                                <div
+                                  className="score-fill"
+                                  style={{ width: `${claim.confidence}%` }}
+                                />
                               </div>
-                              <div className="score-val">{claim.confidence}%</div>
+                              <div className="score-val">
+                                {claim.confidence}%
+                              </div>
                             </div>
                           </td>
                           <td>
@@ -601,15 +835,21 @@ const Admin = () => {
                                 className="btn btn-primary"
                                 type="button"
                                 disabled={approveMutation.isPending}
-                                onClick={() => handleApprove(claim.realId || claim.id)}
+                                onClick={() =>
+                                  handleApprove(claim.realId || claim.id)
+                                }
                               >
-                                {approveMutation.isPending ? "..." : "✓ Approve"}
+                                {approveMutation.isPending
+                                  ? "..."
+                                  : "✓ Approve"}
                               </button>
                               <button
                                 className="btn btn-danger"
                                 type="button"
                                 disabled={rejectMutation.isPending}
-                                onClick={() => handleReject(claim.realId || claim.id)}
+                                onClick={() =>
+                                  handleReject(claim.realId || claim.id)
+                                }
                               >
                                 {rejectMutation.isPending ? "..." : "✗ Reject"}
                               </button>
@@ -627,12 +867,27 @@ const Admin = () => {
           {/* ── WORKERS ── */}
           {activePage === "workers" && (
             <>
-              <Header badge="Workers Module" title="Worker" accent="Directory" subtitle="Manage all registered gig workers — view profiles, stability scores, and account actions." />
+              <Header
+                badge="Workers Module"
+                title="Worker"
+                accent="Directory"
+                subtitle="Manage all registered gig workers — view profiles, stability scores, and account actions."
+              />
               <div className="kpi-grid">
-                <Kpi tone="teal" icon="👥" label="Total Workers" value={String(displayUsers.length)} />
+                <Kpi
+                  tone="teal"
+                  icon="👥"
+                  label="Total Workers"
+                  value={String(displayUsers.length)}
+                />
                 <Kpi tone="green" icon="🟢" label="Active Today" value="2" />
                 <Kpi tone="orange" icon="🚩" label="Flagged" value="0" />
-                <Kpi tone="yellow" icon="📊" label="Avg Stability" value="96%" />
+                <Kpi
+                  tone="yellow"
+                  icon="📊"
+                  label="Avg Stability"
+                  value="96%"
+                />
               </div>
               <Section title="All Workers">
                 <div className="search-bar-wrap">
@@ -663,36 +918,53 @@ const Admin = () => {
                         <tr key={user.id}>
                           <td>
                             <div className="name">{user.fullName}</div>
-                            <div className="sub">{user.email} · {user.phone}</div>
+                            <div className="sub">
+                              {user.email} · {user.phone}
+                            </div>
                           </td>
                           <td>
                             <div className="name">{user.platform}</div>
                             <div className="sub">{user.city}</div>
                           </td>
                           <td>
-                            <span className={`badge ${user.activePlan ? "teal" : "gray"}`}>
+                            <span
+                              className={`badge ${user.activePlan ? "teal" : "gray"}`}
+                            >
                               {user.activePlan || "No Policy"}
                             </span>
                           </td>
                           <td>{claimCount}</td>
-                          <td style={{ color: score < 95 ? "var(--yellow)" : "var(--green)" }}>
+                          <td
+                            style={{
+                              color:
+                                score < 95 ? "var(--yellow)" : "var(--green)",
+                            }}
+                          >
                             {score < 95 ? "Medium" : "Low"}
                           </td>
                           <td>
                             <div className="score-wrap">
                               <div className="score-bar">
-                                <div className="score-fill" style={{ width: `${score}%` }} />
+                                <div
+                                  className="score-fill"
+                                  style={{ width: `${score}%` }}
+                                />
                               </div>
                               <div className="score-val">{score}%</div>
                             </div>
                           </td>
                           <td style={{ color: "var(--text-muted)" }}>
-                            {["2h ago", "1h ago", "5h ago", "1d ago"][index] || "Today"}
+                            {["2h ago", "1h ago", "5h ago", "1d ago"][index] ||
+                              "Today"}
                           </td>
                           <td>
                             <div className="action-row">
-                              <button className="btn btn-ghost" type="button">👁 View</button>
-                              <button className="btn btn-danger" type="button">🚩 Flag</button>
+                              <button className="btn btn-ghost" type="button">
+                                👁 View
+                              </button>
+                              <button className="btn btn-danger" type="button">
+                                🚩 Flag
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -707,40 +979,79 @@ const Admin = () => {
           {/* ── POLICIES ── */}
           {activePage === "policies" && (
             <>
-              <Header badge="Policy Management" title="Policy" accent="Control" subtitle="Manage all insurance plans — activate, deactivate, renew, and analyze coverage gaps." />
+              <Header
+                badge="Policy Management"
+                title="Policy"
+                accent="Control"
+                subtitle="Manage all insurance plans — activate, deactivate, renew, and analyze coverage gaps."
+              />
               <div className="kpi-grid">
                 <Kpi tone="green" icon="✅" label="Active Policies" value="2" />
                 <Kpi tone="teal" icon="⏸" label="Inactive" value="0" />
-                <Kpi tone="yellow" icon="⚡" label="Total Premium" value="Rs 480" />
-                <Kpi tone="orange" icon="🛡️" label="Max Coverage" value="Rs 9,000" />
+                <Kpi
+                  tone="yellow"
+                  icon="⚡"
+                  label="Total Premium"
+                  value="Rs 480"
+                />
+                <Kpi
+                  tone="orange"
+                  icon="🛡️"
+                  label="Max Coverage"
+                  value="Rs 9,000"
+                />
               </div>
               <Section title="Policy Registry">
                 <table className="data-table">
                   <thead>
                     <tr>
-                      <th>Policy ID</th><th>Worker</th><th>Plan Type</th>
-                      <th>Premium</th><th>Coverage</th><th>Start Date</th>
-                      <th>City</th><th>Status</th><th>Actions</th>
+                      <th>Policy ID</th>
+                      <th>Worker</th>
+                      <th>Plan Type</th>
+                      <th>Premium</th>
+                      <th>Coverage</th>
+                      <th>Start Date</th>
+                      <th>City</th>
+                      <th>Status</th>
+                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {policiesTableRows.map((policy) => (
                       <tr key={policy.id}>
-                        <td style={{ color: "var(--teal)", fontWeight: 700 }}>{policy.id}</td>
+                        <td style={{ color: "var(--teal)", fontWeight: 700 }}>
+                          {policy.id}
+                        </td>
                         <td>
                           <div className="name">{policy.worker}</div>
                           <div className="sub">{policy.sub}</div>
                         </td>
-                        <td><span className={`badge ${policy.planTone}`}>{policy.plan}</span></td>
+                        <td>
+                          <span className={`badge ${policy.planTone}`}>
+                            {policy.plan}
+                          </span>
+                        </td>
                         <td>{policy.premium}</td>
-                        <td style={{ color: "var(--green)", fontWeight: 600 }}>{policy.coverage}</td>
-                        <td style={{ color: "var(--text-muted)" }}>{policy.startDate}</td>
+                        <td style={{ color: "var(--green)", fontWeight: 600 }}>
+                          {policy.coverage}
+                        </td>
+                        <td style={{ color: "var(--text-muted)" }}>
+                          {policy.startDate}
+                        </td>
                         <td>{policy.city}</td>
-                        <td><span className={`badge ${policy.statusTone}`}>{policy.status}</span></td>
+                        <td>
+                          <span className={`badge ${policy.statusTone}`}>
+                            {policy.status}
+                          </span>
+                        </td>
                         <td>
                           <div className="action-row">
-                            <button className="btn btn-ghost" type="button">Renew</button>
-                            <button className="btn btn-danger" type="button">Deactivate</button>
+                            <button className="btn btn-ghost" type="button">
+                              Renew
+                            </button>
+                            <button className="btn btn-danger" type="button">
+                              Deactivate
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -752,7 +1063,9 @@ const Admin = () => {
                 <div className="three-col">
                   {coverageGapCards.map((card) => (
                     <div key={card.title} className="ticket">
-                      <div style={{ marginBottom: 8, fontSize: 20 }}>{card.icon}</div>
+                      <div style={{ marginBottom: 8, fontSize: 20 }}>
+                        {card.icon}
+                      </div>
                       <div className="ticket-title">{card.title}</div>
                       <div className="ticket-body">{card.body}</div>
                     </div>
@@ -765,17 +1078,52 @@ const Admin = () => {
           {/* ── RISK MAP ── */}
           {activePage === "riskmap" && (
             <>
-              <Header badge="Risk Intelligence" title="Risk" accent="Map" subtitle="City-wise risk overview, disruption markers, and live threat intelligence dashboard." />
+              <Header
+                badge="Risk Intelligence"
+                title="Risk"
+                accent="Map"
+                subtitle="City-wise risk overview, disruption markers, and live threat intelligence dashboard."
+              />
               <div className="kpi-grid">
-                <Kpi tone="orange" icon="🏙️" label="High Risk Cities" value="1" sub="Delhi: 82%" />
-                <Kpi tone="yellow" icon="🌡️" label="Active Triggers" value="2" sub="Heatwave, AQI" />
-                <Kpi tone="teal" icon="👷" label="Affected Workers" value="3" sub="In risk zones" />
-                <Kpi tone="orange" icon="💸" label="Payout Exposure" value="Rs 2,150" sub="Expected liability" />
+                <Kpi
+                  tone="orange"
+                  icon="🏙️"
+                  label="High Risk Cities"
+                  value="1"
+                  sub="Delhi: 82%"
+                />
+                <Kpi
+                  tone="yellow"
+                  icon="🌡️"
+                  label="Active Triggers"
+                  value="2"
+                  sub="Heatwave, AQI"
+                />
+                <Kpi
+                  tone="teal"
+                  icon="👷"
+                  label="Affected Workers"
+                  value="3"
+                  sub="In risk zones"
+                />
+                <Kpi
+                  tone="orange"
+                  icon="💸"
+                  label="Payout Exposure"
+                  value="Rs 2,150"
+                  sub="Expected liability"
+                />
               </div>
               <div className="two-col">
                 <Section title="City Risk Index">
                   {cityRiskSummary.map((item) => (
-                    <RiskRow key={item.city} city={item.city} risk={item.risk} level={item.level} suffixEmoji />
+                    <RiskRow
+                      key={item.city}
+                      city={item.city}
+                      risk={item.risk}
+                      level={item.level}
+                      suffixEmoji
+                    />
                   ))}
                 </Section>
                 <div>
@@ -787,7 +1135,9 @@ const Admin = () => {
                           <div className="event-title">{signal.title}</div>
                           <div className="event-meta">{signal.meta}</div>
                         </div>
-                        <span className={`badge ${signal.badgeTone}`}>{signal.badge}</span>
+                        <span className={`badge ${signal.badgeTone}`}>
+                          {signal.badge}
+                        </span>
                       </div>
                     ))}
                   </Section>
@@ -809,44 +1159,93 @@ const Admin = () => {
           {/* ── THREATS ── */}
           {activePage === "threats" && (
             <>
-              <Header badge="Threat Engine" title="Threat Events &" accent="Triggers" subtitle="Create, simulate, and manage disruption events. Preview impact before publishing." />
+              <Header
+                badge="Threat Engine"
+                title="Threat Events &"
+                accent="Triggers"
+                subtitle="Create, simulate, and manage disruption events. Preview impact before publishing."
+              />
               <div className="two-col">
                 <Section title="Global Disruption Simulator" tone="orange">
                   <Field label="Target City">
-                    <select className="form-select" value={simCity} onChange={(e) => setSimCity(e.target.value)}>
+                    <select
+                      className="form-select"
+                      value={simCity}
+                      onChange={(e) => setSimCity(e.target.value)}
+                    >
                       <option value="">Select city</option>
-                      <option>Delhi</option><option>Mumbai</option>
-                      <option>Bangalore</option><option>Chennai</option>
-                      <option>Hyderabad</option><option>Pune</option>
+                      <option>Delhi</option>
+                      <option>Mumbai</option>
+                      <option>Bangalore</option>
+                      <option>Chennai</option>
+                      <option>Hyderabad</option>
+                      <option>Pune</option>
                     </select>
                   </Field>
                   <Field label="Disruption Type">
-                    <select className="form-select" value={simType} onChange={(e) => setSimType(e.target.value)}>
+                    <select
+                      className="form-select"
+                      value={simType}
+                      onChange={(e) => setSimType(e.target.value)}
+                    >
                       <option value="">Select type</option>
-                      <option>Heatwave</option><option>Heavy Rain</option>
-                      <option>AQI Alert</option><option>Cyclone Warning</option>
-                      <option>Cold Wave</option><option>Thunderstorm</option>
+                      <option>Heatwave</option>
+                      <option>Heavy Rain</option>
+                      <option>AQI Alert</option>
+                      <option>Cyclone Warning</option>
+                      <option>Cold Wave</option>
+                      <option>Thunderstorm</option>
                     </select>
                   </Field>
                   <Field label="Severity">
-                    <select className="form-select" value={simSeverity} onChange={(e) => setSimSeverity(e.target.value)}>
-                      <option>Low</option><option>Medium</option>
-                      <option>High</option><option>Critical</option>
+                    <select
+                      className="form-select"
+                      value={simSeverity}
+                      onChange={(e) => setSimSeverity(e.target.value)}
+                    >
+                      <option>Low</option>
+                      <option>Medium</option>
+                      <option>High</option>
+                      <option>Critical</option>
                     </select>
                   </Field>
                   <div className="action-row">
-                    <button className="btn btn-warn" type="button" onClick={previewImpact}>🔍 Preview Impact</button>
-                    <button className="btn btn-primary" type="button" onClick={() => void publishThreat()}>⚡ Publish Event</button>
-                    <button className="btn btn-ghost" type="button">💾 Save Draft</button>
+                    <button
+                      className="btn btn-warn"
+                      type="button"
+                      onClick={previewImpact}
+                    >
+                      🔍 Preview Impact
+                    </button>
+                    <button
+                      className="btn btn-primary"
+                      type="button"
+                      onClick={() => void publishThreat()}
+                    >
+                      ⚡ Publish Event
+                    </button>
+                    <button className="btn btn-ghost" type="button">
+                      💾 Save Draft
+                    </button>
                   </div>
                 </Section>
                 <div>
                   {preview && (
                     <Section title="Impact Preview" tone="yellow">
-                      <MiniStat label="Workers Affected" value={String(preview.workers)} tone="yellow" />
-                      <MiniStat label="Est. Payout Exposure" value={`Rs ${preview.payout}`} tone="orange" />
+                      <MiniStat
+                        label="Workers Affected"
+                        value={String(preview.workers)}
+                        tone="yellow"
+                      />
+                      <MiniStat
+                        label="Est. Payout Exposure"
+                        value={`Rs ${preview.payout}`}
+                        tone="orange"
+                      />
                       <div className="ticket-body" style={{ marginTop: 10 }}>
-                        {simType} in {simCity} at {simSeverity} severity will trigger automated claim checks for {preview.workers} active worker(s).
+                        {simType} in {simCity} at {simSeverity} severity will
+                        trigger automated claim checks for {preview.workers}{" "}
+                        active worker(s).
                       </div>
                     </Section>
                   )}
@@ -858,7 +1257,9 @@ const Admin = () => {
                           <div className="event-title">{event.title}</div>
                           <div className="event-meta">{event.meta}</div>
                         </div>
-                        <button className="btn btn-ghost" type="button">Resolve</button>
+                        <button className="btn btn-ghost" type="button">
+                          Resolve
+                        </button>
                       </div>
                     ))}
                   </Section>
@@ -870,23 +1271,72 @@ const Admin = () => {
           {/* ── ANALYTICS ── */}
           {activePage === "analytics" && (
             <>
-              <Header badge="Analytics Module" title="Platform" accent="Analytics" subtitle="Deep insights on claims, payouts, policy adoption, and loss forecasting." />
+              <Header
+                badge="Analytics Module"
+                title="Platform"
+                accent="Analytics"
+                subtitle="Deep insights on claims, payouts, policy adoption, and loss forecasting."
+              />
               <div className="kpi-grid">
-                <Kpi tone="teal" icon="📈" label="Approval Rate" value="0%" sub="Pending review" />
-                <Kpi tone="green" icon="⚡" label="Avg Settlement" value="—" sub="No settled claims yet" />
-                <Kpi tone="yellow" icon="🔮" label="7-Day Forecast" value="Rs 3,200" sub="Predicted payout" />
-                <Kpi tone="orange" icon="🛡️" label="Policy Penetration" value="50%" sub="2 of 4 workers" />
+                <Kpi
+                  tone="teal"
+                  icon="📈"
+                  label="Approval Rate"
+                  value="0%"
+                  sub="Pending review"
+                />
+                <Kpi
+                  tone="green"
+                  icon="⚡"
+                  label="Avg Settlement"
+                  value="—"
+                  sub="No settled claims yet"
+                />
+                <Kpi
+                  tone="yellow"
+                  icon="🔮"
+                  label="7-Day Forecast"
+                  value="Rs 3,200"
+                  sub="Predicted payout"
+                />
+                <Kpi
+                  tone="orange"
+                  icon="🛡️"
+                  label="Policy Penetration"
+                  value="50%"
+                  sub="2 of 4 workers"
+                />
               </div>
               <div className="two-col">
-                <Section title="Claims Over Time"><BarChart bars={analyticsBars.claims} /></Section>
-                <Section title="Payouts Over Time" tone="yellow"><BarChart bars={analyticsBars.payouts} /></Section>
+                <Section title="Claims Over Time">
+                  <BarChart bars={analyticsBars.claims} />
+                </Section>
+                <Section title="Payouts Over Time" tone="yellow">
+                  <BarChart bars={analyticsBars.payouts} />
+                </Section>
               </div>
               <div className="two-col">
                 <Section title="Loss Forecast Panel" tone="orange">
-                  <MiniStat label="Today" value="Rs 0 (0 claims)" tone="yellow" />
-                  <MiniStat label="Next 3 Days" value="~Rs 1,200" tone="yellow" />
-                  <MiniStat label="Next 7 Days" value="~Rs 3,200" tone="orange" />
-                  <MiniStat label="Risk Drivers" value="Delhi Heatwave" tone="red" />
+                  <MiniStat
+                    label="Today"
+                    value="Rs 0 (0 claims)"
+                    tone="yellow"
+                  />
+                  <MiniStat
+                    label="Next 3 Days"
+                    value="~Rs 1,200"
+                    tone="yellow"
+                  />
+                  <MiniStat
+                    label="Next 7 Days"
+                    value="~Rs 3,200"
+                    tone="orange"
+                  />
+                  <MiniStat
+                    label="Risk Drivers"
+                    value="Delhi Heatwave"
+                    tone="red"
+                  />
                   <MiniStat label="Model Confidence" value="81%" tone="green" />
                 </Section>
                 <Section title="Platform Distribution">
@@ -903,7 +1353,12 @@ const Admin = () => {
           {/* ── SUPPORT ── */}
           {activePage === "support" && (
             <>
-              <Header badge="Support Ops" title="Support" accent="Inbox" subtitle="Review support tickets, flagged claims, and admin verification queue." />
+              <Header
+                badge="Support Ops"
+                title="Support"
+                accent="Inbox"
+                subtitle="Review support tickets, flagged claims, and admin verification queue."
+              />
               <div className="kpi-grid">
                 <Kpi tone="yellow" icon="🎫" label="Open Tickets" value="2" />
                 <Kpi tone="orange" icon="🚩" label="Flagged Claims" value="1" />
@@ -917,19 +1372,29 @@ const Admin = () => {
                       <div className="ticket-top">
                         <div>
                           <div className="ticket-title">{ticket.title}</div>
-                          <div className="sub">{ticket.id} · {ticket.meta}</div>
+                          <div className="sub">
+                            {ticket.id} · {ticket.meta}
+                          </div>
                         </div>
-                        <span className={`badge ${ticket.badgeTone}`}>{ticket.badge}</span>
+                        <span className={`badge ${ticket.badgeTone}`}>
+                          {ticket.badge}
+                        </span>
                       </div>
                       <div className="ticket-body">{ticket.body}</div>
                       <div className="ticket-foot">
-                        <button className="btn btn-primary" type="button">✓ Resolve</button>
-                        <button className="btn btn-ghost" type="button">💬 Reply</button>
+                        <button className="btn btn-primary" type="button">
+                          ✓ Resolve
+                        </button>
+                        <button className="btn btn-ghost" type="button">
+                          💬 Reply
+                        </button>
                         <button
                           className={`btn ${ticket.badgeTone === "orange" ? "btn-danger" : "btn-warn"}`}
                           type="button"
                         >
-                          {ticket.badgeTone === "orange" ? "🚩 Flag Fraud" : "🔺 Escalate"}
+                          {ticket.badgeTone === "orange"
+                            ? "🚩 Flag Fraud"
+                            : "🔺 Escalate"}
                         </button>
                       </div>
                     </div>
@@ -938,18 +1403,37 @@ const Admin = () => {
                 <div>
                   <Section title="Priority Recommendation" tone="red">
                     <div className="ticket">
-                      <div className="ticket-title" style={{ color: "var(--teal)" }}>Admin Action Suggested</div>
+                      <div
+                        className="ticket-title"
+                        style={{ color: "var(--teal)" }}
+                      >
+                        Admin Action Suggested
+                      </div>
                       <div className="ticket-body">
-                        1. Approve claim #CLM-001 — high confidence, valid trigger<br />
-                        2. Review #TKT-002 — worker reporting delay, escalation risk<br />
-                        3. Outreach Mumbai workers — policy coverage gap detected<br />
+                        1. Approve claim #CLM-001 — high confidence, valid
+                        trigger
+                        <br />
+                        2. Review #TKT-002 — worker reporting delay, escalation
+                        risk
+                        <br />
+                        3. Outreach Mumbai workers — policy coverage gap
+                        detected
+                        <br />
                         4. Increase monitoring in Delhi — heatwave risk at 82%
                       </div>
                     </div>
                   </Section>
                   <Section title="Fraud Watchlist" tone="orange">
-                    <MiniStat label="Active Watchlist Entries" value="0" tone="green" />
-                    <MiniStat label="Suspicious Claims" value="1 (Medium)" tone="yellow" />
+                    <MiniStat
+                      label="Active Watchlist Entries"
+                      value="0"
+                      tone="green"
+                    />
+                    <MiniStat
+                      label="Suspicious Claims"
+                      value="1 (Medium)"
+                      tone="yellow"
+                    />
                     <MiniStat label="Fraud Score Threshold" value="75%" />
                   </Section>
                 </div>
@@ -960,7 +1444,12 @@ const Admin = () => {
           {/* ── SETTINGS ── */}
           {activePage === "settings" && (
             <>
-              <Header badge="Admin Settings" title="Profile &" accent="Settings" subtitle="Manage your admin account, notification preferences, and system configuration." />
+              <Header
+                badge="Admin Settings"
+                title="Profile &"
+                accent="Settings"
+                subtitle="Manage your admin account, notification preferences, and system configuration."
+              />
               <div className="two-col">
                 <Section title="Admin Profile">
                   <div className="profile-row">
@@ -968,18 +1457,27 @@ const Admin = () => {
                     <div>
                       <div className="profile-name">Super Admin</div>
                       <div className="profile-role">God Mode Access</div>
-                      <div className="sub" style={{ marginTop: 6 }}>admin@gigshield.io</div>
+                      <div className="sub" style={{ marginTop: 6 }}>
+                        admin@gigshield.io
+                      </div>
                     </div>
                   </div>
                   <Field label="Display Name">
                     <input className="form-input" defaultValue="Super Admin" />
                   </Field>
                   <Field label="Email">
-                    <input className="form-input" defaultValue="admin@gigshield.io" />
+                    <input
+                      className="form-input"
+                      defaultValue="admin@gigshield.io"
+                    />
                   </Field>
                   <div className="action-row">
-                    <button className="btn btn-primary" type="button">Save Changes</button>
-                    <button className="btn btn-ghost" type="button">Change Password</button>
+                    <button className="btn btn-primary" type="button">
+                      Save Changes
+                    </button>
+                    <button className="btn btn-ghost" type="button">
+                      Change Password
+                    </button>
                   </div>
                 </Section>
                 <div>
@@ -997,7 +1495,9 @@ const Admin = () => {
                       <input className="form-input" defaultValue="90%" />
                     </Field>
                     <div className="action-row">
-                      <button className="btn btn-primary" type="button">Apply Config</button>
+                      <button className="btn btn-primary" type="button">
+                        Apply Config
+                      </button>
                     </div>
                   </Section>
                 </div>
@@ -1021,7 +1521,9 @@ function Header(props: {
   return (
     <div className="pg-header">
       <div className="pg-badge">{props.badge}</div>
-      <h1 className="pg-title">{props.title} <span>{props.accent}</span></h1>
+      <h1 className="pg-title">
+        {props.title} <span>{props.accent}</span>
+      </h1>
       <p className="pg-sub">{props.subtitle}</p>
     </div>
   );
@@ -1096,17 +1598,24 @@ function RiskRow(props: {
   suffixEmoji?: boolean;
 }) {
   const emoji = props.suffixEmoji
-    ? props.level === "high" ? " 🔴"
-    : props.level === "medium" ? " 🟡"
-    : " 🟢"
+    ? props.level === "high"
+      ? " 🔴"
+      : props.level === "medium"
+        ? " 🟡"
+        : " 🟢"
     : "";
   return (
     <div className="risk-city">
       <div className="city-name">{props.city}</div>
       <div className="risk-bar">
-        <div className={`risk-fill ${props.level}`} style={{ width: `${props.risk}%` }} />
+        <div
+          className={`risk-fill ${props.level}`}
+          style={{ width: `${props.risk}%` }}
+        />
       </div>
-      <div className={`risk-pct ${props.level}`}>{props.risk}%{emoji}</div>
+      <div className={`risk-pct ${props.level}`}>
+        {props.risk}%{emoji}
+      </div>
     </div>
   );
 }

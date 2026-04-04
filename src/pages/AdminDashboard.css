@@ -14,8 +14,16 @@
   --sidebar-w: 230px;
   min-height: 100vh;
   background:
-    radial-gradient(circle at top right, rgba(0, 212, 200, 0.12), transparent 30%),
-    radial-gradient(circle at bottom left, rgba(255, 107, 53, 0.12), transparent 25%),
+    radial-gradient(
+      circle at top right,
+      rgba(0, 212, 200, 0.12),
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at bottom left,
+      rgba(255, 107, 53, 0.12),
+      transparent 25%
+    ),
     var(--bg-deep);
   color: var(--text);
   font-family: "Trebuchet MS", "Segoe UI", sans-serif;
@@ -29,8 +37,16 @@
   --text-muted: #4e6d96;
   --text-dim: #7e95b7;
   background:
-    radial-gradient(circle at top right, rgba(0, 184, 212, 0.12), transparent 28%),
-    radial-gradient(circle at bottom left, rgba(255, 107, 53, 0.1), transparent 24%),
+    radial-gradient(
+      circle at top right,
+      rgba(0, 184, 212, 0.12),
+      transparent 28%
+    ),
+    radial-gradient(
+      circle at bottom left,
+      rgba(255, 107, 53, 0.1),
+      transparent 24%
+    ),
     linear-gradient(180deg, #f7fbff 0%, #e6f0fa 100%);
 }
 
@@ -941,5 +957,13 @@
   }
 }
 
-.admin-dashboard .kpi-card:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 12px 30px rgba(0, 212, 200, 0.12); border-color: rgba(0, 212, 200, 0.4); z-index: 10; }
-.admin-dashboard .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0, 212, 200, 0.4); }
+.admin-dashboard .kpi-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 12px 30px rgba(0, 212, 200, 0.12);
+  border-color: rgba(0, 212, 200, 0.4);
+  z-index: 10;
+}
+.admin-dashboard .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 212, 200, 0.4);
+}

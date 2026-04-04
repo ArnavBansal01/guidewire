@@ -1,6 +1,10 @@
 import { collection, getDocs } from "firebase/firestore";
 import { auth, db } from "../firebase";
-import type { AdminStats, UserProfile, AdminSystemIntelligence } from "../types/domain";
+import type {
+  AdminStats,
+  UserProfile,
+  AdminSystemIntelligence,
+} from "../types/domain";
 
 const API_URL = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
 const API_BASES = [API_URL, "http://localhost:5000"].filter(Boolean);
@@ -73,7 +77,10 @@ export const fetchAdminDashboardData = async (): Promise<{
       users: [],
     };
   } catch (apiError) {
-    console.warn("Admin stats API unavailable, using Firestore fallback:", apiError);
+    console.warn(
+      "Admin stats API unavailable, using Firestore fallback:",
+      apiError,
+    );
 
     try {
       const [usersSnap, claimsSnap] = await Promise.all([
@@ -140,48 +147,52 @@ export const fetchAdminDashboardData = async (): Promise<{
 };
 
 // 📊 FETCH SYSTEM INTELLIGENCE (Real-time telemetry)
-export const fetchSystemIntelligence = async (): Promise<AdminSystemIntelligence | null> => {
-  try {
-    const headers = await getAuthHeader();
-    const json = await fetchFromApi("/api/admin/stats/intelligence", headers);
+export const fetchSystemIntelligence =
+  async (): Promise<AdminSystemIntelligence | null> => {
+    try {
+      const headers = await getAuthHeader();
+      const json = await fetchFromApi("/api/admin/stats/intelligence", headers);
 
-    if (!json.success || !json.data) {
-      throw new Error(json.error || "Failed to fetch system intelligence");
+      if (!json.success || !json.data) {
+        throw new Error(json.error || "Failed to fetch system intelligence");
+      }
+
+      return json.data as AdminSystemIntelligence;
+    } catch (apiError) {
+      console.warn(
+        "System intelligence API unavailable, using local fallback:",
+        apiError,
+      );
+
+      const fallback = await fetchAdminDashboardData();
+
+      return {
+        health: {
+          activeUsers: fallback.stats.totalUsers,
+          activePolicies: fallback.stats.activePolicies,
+          uptime: 0,
+          apiResponseTime: 0,
+        },
+        financial: {
+          totalPayouts: fallback.stats.totalPayouts,
+          premiumCollected: 0,
+          lossRatio: 0,
+        },
+        fraud: {
+          suspiciousClaims: fallback.stats.fraudAlerts,
+          flaggedWorkers: 0,
+          highRiskCount: 0,
+        },
+        activity: {
+          recentClaimsCount: 0,
+          eventsLog: [],
+        },
+        environment: {
+          highRiskCities: 0,
+          avgAqi: 0,
+          activeDisruptions: ["API offline: running on fallback data"],
+          riskScoreIndex: 0,
+        },
+      };
     }
-
-    return json.data as AdminSystemIntelligence;
-  } catch (apiError) {
-    console.warn("System intelligence API unavailable, using local fallback:", apiError);
-
-    const fallback = await fetchAdminDashboardData();
-
-    return {
-      health: {
-        activeUsers: fallback.stats.totalUsers,
-        activePolicies: fallback.stats.activePolicies,
-        uptime: 0,
-        apiResponseTime: 0,
-      },
-      financial: {
-        totalPayouts: fallback.stats.totalPayouts,
-        premiumCollected: 0,
-        lossRatio: 0,
-      },
-      fraud: {
-        suspiciousClaims: fallback.stats.fraudAlerts,
-        flaggedWorkers: 0,
-        highRiskCount: 0,
-      },
-      activity: {
-        recentClaimsCount: 0,
-        eventsLog: [],
-      },
-      environment: {
-        highRiskCities: 0,
-        avgAqi: 0,
-        activeDisruptions: ["API offline: running on fallback data"],
-        riskScoreIndex: 0,
-      },
-    };
-  }
-};
+  };
