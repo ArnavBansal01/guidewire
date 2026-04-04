@@ -3,10 +3,8 @@ export const partners = [
   'Swiggy',
   'Zepto',
   'Blinkit',
-  'Uber',
+ 
 
   'Rapido',
-  'Porter',
-  'Amazon',
-  'Flipkart','Other'
+  'Porter','Other'
 ];
