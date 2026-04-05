@@ -8,18 +8,14 @@ import {
   AlertTriangle,
   CheckCircle,
   Zap,
+  Info,
 } from "lucide-react";
 
 import { useAuth } from "../contexts/AuthContext";
 import { useUserProfile } from "../hooks/useUserProfile";
-import { getStateCompensation, getStateFromCity } from "../utils/PremiumLogic";
+import { useEnvironmentalPremium } from "../hooks/useEnvironmentalPremium";
+import { getPlanById } from "../data/plans";
 
-import {
-  mockPolicy, // Keeping mockPolicy for now until we build the checkout flow
-} from "../mockData";
-import { plans } from "../data/plans";
-
-const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const getNextFriday = (date: Date) => {
   const nextFriday = new Date(date);
@@ -32,125 +28,43 @@ const getNextFriday = (date: Date) => {
   return nextFriday;
 };
 
-type ParametricWindowData = {
-  state: string;
-  stateCompensation: number;
-  temp: number;
-  rainProb: number;
-  aqi: number;
-  finalPremium: number;
-  breakdown: Array<{ factor: string; impact: string }>;
-  fetchedAt: number;
-};
-
 const Dashboard = () => {
   const { user } = useAuth();
   const { profile: dbUser } = useUserProfile();
   const [showClaimToast, setShowClaimToast] = useState(false);
-  const [planDetails, setPlanDetails] = useState<any>(null);
   const [now, setNow] = useState(() => new Date());
-  const [parametricWindow, setParametricWindow] =
-    useState<ParametricWindowData | null>(() => {
-      const cached = localStorage.getItem("parametricCache");
-      return cached ? JSON.parse(cached) : null;
-    });
-  const [loadingParametric, setLoadingParametric] = useState(false);
+
+  // ── Live environmental data via shared hook ──
+  const { data: envData, loading: loadingEnv } = useEnvironmentalPremium({
+    city: dbUser?.city,
+    platform: dbUser?.platform,
+    deliveries: dbUser?.avgDailyDeliveries,
+  });
 
   useEffect(() => {
     const intervalId = setInterval(() => setNow(new Date()), 60000);
-
     return () => clearInterval(intervalId);
   }, []);
-
-  useEffect(() => {
-    if (dbUser?.activePlan) {
-      const matchingPlan = plans.find((p) => p.name === dbUser.activePlan);
-      setPlanDetails(matchingPlan || null);
-      return;
-    }
-    setPlanDetails(null);
-  }, [dbUser?.activePlan]);
-
-  useEffect(() => {
-    if (!dbUser?.city) {
-      setParametricWindow(null);
-      setLoadingParametric(false);
-      return;
-    }
-
-    let isMounted = true;
-
-    const fetchParametricWindow = async () => {
-      setLoadingParametric(true);
-      try {
-        const response = await fetch(`${BACKEND_URL}/api/calculate-premium`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            city: dbUser.city,
-            platform: dbUser.platform || "Porter",
-            deliveries: dbUser.avgDailyDeliveries || 20,
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch parametric data");
-        }
-
-        const data = await response.json();
-        if (!isMounted) {
-          return;
-        }
-
-        const fallbackState = getStateFromCity(dbUser?.city || "");
-
-        const parametricData = {
-          state: typeof data?.state === "string" ? data.state : fallbackState,
-          stateCompensation:
-            typeof data?.stateCompensation === "number" &&
-            Number.isFinite(data.stateCompensation)
-              ? data.stateCompensation
-              : getStateCompensation(fallbackState),
-          temp: Number(data?.liveData?.temp ?? 0),
-          rainProb: Number(data?.liveData?.rainProb ?? 0),
-          aqi: Number(data?.liveData?.aqi ?? 0),
-          finalPremium: Number(data?.finalPremium ?? 0),
-          breakdown: Array.isArray(data?.breakdown) ? data.breakdown : [],
-          fetchedAt: Date.now(),
-        };
-
-        setParametricWindow(parametricData);
-        localStorage.setItem("parametricCache", JSON.stringify(parametricData));
-      } catch (error) {
-        console.error("Error fetching parametric window:", error);
-        if (isMounted) {
-          setParametricWindow(null);
-        }
-      } finally {
-        if (isMounted) {
-          setLoadingParametric(false);
-        }
-      }
-    };
-
-    // Don't set to null here anymore - keep old data while fetching
-    // setParametricWindow(null);
-    fetchParametricWindow();
-    const intervalId = setInterval(fetchParametricWindow, 60000);
-
-    return () => {
-      isMounted = false;
-      clearInterval(intervalId);
-    };
-  }, [dbUser?.city, dbUser?.platform, dbUser?.avgDailyDeliveries]);
 
   const handleSimulateDisruption = () => {
     setShowClaimToast(true);
     setTimeout(() => setShowClaimToast(false), 5000);
   };
 
+  // ── Plan resolution (from plans.ts, never mock data) ──
+  const activePlan = getPlanById(
+    dbUser?.activePlan || dbUser?.activePlanName,
+  );
+  const hasActivePlan = Boolean(dbUser?.activePlan || dbUser?.hasActivePolicy);
+  const activePlanLabel = activePlan?.name || (hasActivePlan ? (dbUser?.activePlanName || "Active Plan") : "No active plan");
+
+  // ── Live pricing: single source of truth from backend surcharge + plan base ──
+  const liveSurcharge = envData?.liveSurcharge ?? 0;
+  const weeklyPremium = activePlan
+    ? activePlan.basePrice + liveSurcharge
+    : null;
+
+  // ── Coverage window ──
   const nextCoverageWindow = getNextFriday(now);
   const daysUntilLock = Math.max(
     0,
@@ -168,22 +82,32 @@ const Dashboard = () => {
     },
   );
 
-  const hasActivePlan = Boolean(dbUser?.activePlan || dbUser?.hasActivePolicy);
-  const activePlanLabel = hasActivePlan
-    ? dbUser?.activePlan ||
-      dbUser?.activePlanName ||
-      mockPolicy.type.charAt(0).toUpperCase() + mockPolicy.type.slice(1)
-    : "No active plan";
-
-  const riskValue = parametricWindow?.rainProb ?? 0;
+  // ── Parametric data ──
+  const riskValue = envData?.liveData.rainProb ?? 0;
   const riskProgress = Math.min((riskValue / 60) * 100, 100);
-  const aqiValue = parametricWindow?.aqi ?? 0;
+  const aqiValue = envData?.liveData.aqi ?? 0;
   const aqiProgress = Math.min((aqiValue / 200) * 100, 100);
-  const tempValue = parametricWindow?.temp ?? 0;
+  const tempValue = envData?.liveData.temp ?? 0;
   const tempProgress = Math.min((tempValue / 45) * 100, 100);
-  const compensationReasons = (parametricWindow?.breakdown || []).filter(
-    (item) => !item.factor.startsWith("State Compensation"),
-  );
+
+  // Environmental trigger factors — exclude meta items AND any stale "compensation" data
+  const triggerFactors = (envData?.breakdown || []).filter((item) => {
+    const factor = item.factor.toLowerCase();
+    if (factor.includes("compensation") || factor.includes("state")) return false;
+    return (
+      factor.includes("rain") ||
+      factor.includes("heat") ||
+      factor.includes("temp") ||
+      factor.includes("aqi") ||
+      factor.includes("air quality")
+    );
+  });
+
+  // Full breakdown for the "Why is my premium" section — exclude stale compensation items
+  const cleanBreakdown = (envData?.breakdown || []).filter((item) => {
+    const factor = item.factor.toLowerCase();
+    return !factor.includes("compensation") && !factor.includes("state");
+  });
 
   return (
     <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
@@ -253,16 +177,16 @@ const Dashboard = () => {
                   </div>
                 </div>
 
-                {planDetails && (
+                {activePlan && (
                   <div className="bg-gradient-to-r from-cyan-50 to-emerald-50 dark:from-cyan-900/20 dark:to-emerald-900/20 border-l-4 border-emerald-500 p-4 rounded-lg mb-6">
                     <div className="flex gap-3">
                       <Shield className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
                       <div>
                         <h3 className="font-semibold text-emerald-900 dark:text-emerald-300 mb-2">
-                          {planDetails.name} Details
+                          {activePlan.name} Details
                         </h3>
                         <ul className="text-sm text-emerald-800 dark:text-emerald-400 space-y-1">
-                          {planDetails.features
+                          {activePlan.features
                             .slice(0, 3)
                             .map((feature: string, idx: number) => (
                               <li key={idx}>• {feature}</li>
@@ -279,15 +203,15 @@ const Dashboard = () => {
                       Weekly Premium
                     </p>
                     <p className="text-lg sm:text-2xl font-bold">
-                      ₹{mockPolicy.weeklyPremium}
+                      ₹{weeklyPremium ?? "—"}
                     </p>
                   </div>
                   <div className="min-w-0 p-3 sm:p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
                     <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mb-1">
-                      Coverage Amount
+                      Max Weekly Payout
                     </p>
                     <p className="text-lg sm:text-2xl font-bold">
-                      ₹{mockPolicy.coverageAmount}
+                      ₹{activePlan?.maxPayout ?? "—"}
                     </p>
                   </div>
                   <div className="min-w-0 p-3 sm:p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
@@ -358,7 +282,8 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="relative overflow-hidden bg-white dark:bg-slate-900/60 backdrop-blur-sm rounded-3xl shadow-xl border border-slate-200 dark:border-slate-800 p-6 md:p-8">
+        {/* ── Parametric Monitor ── */}
+        <div className="relative overflow-hidden bg-white dark:bg-slate-900/60 backdrop-blur-sm rounded-3xl shadow-xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 mb-8">
           <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-cyan-500/20 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-emerald-500/20 blur-3xl" />
 
@@ -375,21 +300,21 @@ const Dashboard = () => {
               </p>
             </div>
 
-            {parametricWindow && (
+            {envData && (
               <div className="flex items-center gap-2 self-start md:self-auto px-3 py-1.5 rounded-full border border-slate-300 dark:border-slate-700 bg-slate-100/80 dark:bg-slate-800/80">
                 <span
-                  className={`h-2 w-2 rounded-full ${loadingParametric ? "bg-cyan-500 animate-pulse" : "bg-emerald-500"}`}
+                  className={`h-2 w-2 rounded-full ${loadingEnv ? "bg-cyan-500 animate-pulse" : "bg-emerald-500"}`}
                 />
                 <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                  {loadingParametric
+                  {loadingEnv
                     ? "Refreshing..."
-                    : `Updated ${new Date(parametricWindow.fetchedAt).toLocaleTimeString()}`}
+                    : `Updated ${new Date(envData.fetchedAt).toLocaleTimeString()}`}
                 </span>
               </div>
             )}
           </div>
 
-          {loadingParametric && !parametricWindow && (
+          {loadingEnv && !envData && (
             <div className="relative z-10 mb-8 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60">
               <div className="flex items-center gap-3 mb-3">
                 <div className="h-3 w-3 rounded-full bg-cyan-500 animate-pulse" />
@@ -404,9 +329,10 @@ const Dashboard = () => {
             </div>
           )}
 
-          {parametricWindow && (
+          {envData && (
             <>
               <div className="relative z-10 grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-5 mb-7">
+                {/* Rain Risk */}
                 <div className="group min-w-0 p-3.5 md:p-5 rounded-2xl border border-cyan-200/80 dark:border-cyan-700/50 bg-gradient-to-b from-white to-cyan-50/60 dark:from-slate-800/70 dark:to-slate-900/70 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-cyan-500/10 transition-all">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
@@ -452,6 +378,7 @@ const Dashboard = () => {
                   </div>
                 </div>
 
+                {/* AQI */}
                 <div className="group min-w-0 p-3.5 md:p-5 rounded-2xl border border-violet-200/80 dark:border-violet-700/50 bg-gradient-to-b from-white to-violet-50/60 dark:from-slate-800/70 dark:to-slate-900/70 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-violet-500/10 transition-all">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
@@ -496,6 +423,7 @@ const Dashboard = () => {
                   </div>
                 </div>
 
+                {/* Temperature */}
                 <div className="group min-w-0 p-3.5 md:p-5 rounded-2xl border border-rose-200/80 dark:border-rose-700/50 bg-gradient-to-b from-white to-rose-50/60 dark:from-slate-800/70 dark:to-slate-900/70 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-rose-500/10 transition-all">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
@@ -542,45 +470,109 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              {parametricWindow && (
-                <div className="relative z-10 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/90 dark:bg-slate-800/50">
-                  <p className="text-sm font-semibold mb-2 text-slate-800 dark:text-slate-200">
-                    State Compensation
-                  </p>
-                  <div className="flex flex-wrap gap-2">
+              {/* ── Live Premium Engine chips ── */}
+              <div className="relative z-10 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/90 dark:bg-slate-800/50 mb-5">
+                <p className="text-sm font-semibold mb-2 text-slate-800 dark:text-slate-200">
+                  Live Premium Engine
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <span className="text-xs px-3 py-1 rounded-full border border-slate-300 dark:border-slate-600 bg-white/80 dark:bg-slate-900/80 text-slate-700 dark:text-slate-300">
+                    Risk Score: {envData.liveRiskScore}/100
+                  </span>
+                  <span className="text-xs px-3 py-1 rounded-full border border-amber-300/70 dark:border-amber-500/40 bg-gradient-to-r from-amber-100 to-orange-100 dark:from-amber-900/35 dark:to-orange-900/35 text-amber-900 dark:text-amber-100 font-semibold shadow-sm">
+                    Live surcharge: ₹{envData.liveSurcharge}/week
+                  </span>
+                  {weeklyPremium !== null && (
                     <span className="text-xs px-3 py-1 rounded-full border border-slate-300 dark:border-slate-600 bg-white/80 dark:bg-slate-900/80 text-slate-700 dark:text-slate-300">
-                      State: {parametricWindow.state}
+                      Premium: ₹{weeklyPremium}/week
                     </span>
-                    <span className="text-xs px-3 py-1 rounded-full border border-slate-300 dark:border-slate-600 bg-white/80 dark:bg-slate-900/80 text-slate-700 dark:text-slate-300">
-                      Compensation: ₹{parametricWindow.stateCompensation}/week
-                    </span>
-                  </div>
-                  <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-                    Why compensated: based on state baseline exposure and live
-                    risk signals.
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {compensationReasons.length > 0 ? (
-                      compensationReasons.map((item, idx) => (
-                        <span
-                          key={idx}
-                          className="text-xs px-3 py-1 rounded-full border border-amber-300/70 dark:border-amber-700/60 bg-amber-50/90 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300"
-                        >
-                          {item.factor}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-xs px-3 py-1 rounded-full border border-slate-300 dark:border-slate-600 bg-white/80 dark:bg-slate-900/80 text-slate-600 dark:text-slate-400">
-                        No extreme heat/rain/AQI trigger right now.
+                  )}
+                </div>
+                <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                  Premium is computed only from live rain, heat, and AQI
+                  triggers.
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {triggerFactors.length > 0 ? (
+                    triggerFactors.map((item, idx) => (
+                      <span
+                        key={idx}
+                        className="text-xs px-3 py-1 rounded-full border border-amber-300/70 dark:border-amber-700/60 bg-amber-50/90 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300"
+                      >
+                        {item.factor}
                       </span>
-                    )}
+                    ))
+                  ) : (
+                    <span className="text-xs px-3 py-1 rounded-full border border-slate-300 dark:border-slate-600 bg-white/80 dark:bg-slate-900/80 text-slate-600 dark:text-slate-400">
+                      No extreme heat/rain/AQI trigger right now.
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* ══════════════════════════════════════════════════════════════
+                  ██  LIVE BREAKDOWN — "Why is this calculated?"
+                  ══════════════════════════════════════════════════════════════ */}
+              {activePlan && weeklyPremium !== null && envData && (
+                <div className="relative z-10 rounded-2xl border border-cyan-200/70 dark:border-cyan-700/40 bg-gradient-to-br from-white to-cyan-50/40 dark:from-slate-800/70 dark:to-slate-900/70 p-5 md:p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Info className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
+                    <h3 className="text-sm font-bold uppercase tracking-wide text-cyan-700 dark:text-cyan-300">
+                      Why is my premium ₹{weeklyPremium}/week?
+                    </h3>
+                  </div>
+
+                  <div className="space-y-2">
+                    {/* Base price row */}
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700">
+                      <div className="flex items-center gap-2">
+                        <Shield className="w-4 h-4 text-emerald-500" />
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                          Base price ({activePlan.name})
+                        </span>
+                      </div>
+                      <span className="text-sm font-bold text-slate-900 dark:text-white font-mono">
+                        ₹{activePlan.basePrice}
+                      </span>
+                    </div>
+
+                    {/* Each surcharge factor row */}
+                    {cleanBreakdown.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between p-3 rounded-xl bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700"
+                      >
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle className={`w-4 h-4 ${item.amount > 0 ? "text-amber-500" : "text-slate-400"}`} />
+                          <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                            {item.factor}
+                          </span>
+                        </div>
+                        <span className={`text-sm font-bold font-mono ${item.amount > 0 ? "text-amber-600 dark:text-amber-400" : "text-slate-500"}`}>
+                          {item.impact}
+                        </span>
+                      </div>
+                    ))}
+
+                    {/* Divider + total */}
+                    <div className="mt-3 pt-3 border-t-2 border-dashed border-cyan-300/50 dark:border-cyan-700/50 flex items-center justify-between px-3">
+                      <span className="text-sm font-bold text-cyan-800 dark:text-cyan-200">
+                        Total weekly premium
+                      </span>
+                      <span className="text-lg font-black text-cyan-700 dark:text-cyan-300 font-mono">
+                        ₹{weeklyPremium}/week
+                      </span>
+                    </div>
+                    <p className="px-3 text-[11px] text-slate-500 dark:text-slate-400">
+                      = Base ₹{activePlan.basePrice} + Environmental Surcharge ₹{envData.liveSurcharge}
+                    </p>
                   </div>
                 </div>
               )}
             </>
           )}
 
-          {!loadingParametric && !parametricWindow && (
+          {!loadingEnv && !envData && (
             <div className="relative z-10 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/90 dark:bg-slate-800/50 text-center">
               <p className="text-sm text-slate-600 dark:text-slate-400">
                 Live monitor data is unavailable for the selected city right

@@ -7,28 +7,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const CITY_TO_STATE = {
-  delhi: "Delhi",
-  mumbai: "Maharashtra",
-  bangalore: "Karnataka",
-  bengaluru: "Karnataka",
-  hyderabad: "Telangana",
-  chennai: "Tamil Nadu",
-  kolkata: "West Bengal",
-  pune: "Maharashtra",
-  ahmedabad: "Gujarat",
-};
-
-const STATE_COMPENSATION = {
-  Delhi: 12,
-  Maharashtra: 10,
-  Karnataka: 11,
-  Telangana: 9,
-  "Tamil Nadu": 9,
-  "West Bengal": 8,
-  Gujarat: 7,
-};
-
 // Representative coordinates for Indian states/UTs used when geocoding does not
 // return a direct hit (common for state-level inputs).
 const STATE_COORDINATE_FALLBACKS = {
@@ -84,12 +62,95 @@ function calculateIndianAQI(pm25) {
   return Math.round(400 + (pm25 - 250) * (100 / 130)); // Severe
 }
 
+function calculateLiveDisruptionPremium({ rainProb, temp, aqi }) {
+  const breakdown = [];
+  const toSafeNumber = (value) => {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : 0;
+  };
+
+  const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+  const safeRainProb = toSafeNumber(rainProb);
+  const safeTemp = toSafeNumber(temp);
+  const safeAqi = toSafeNumber(aqi);
+
+  const rainSeverity = clamp(safeRainProb / 100, 0, 1);
+  const heatSeverity = clamp((safeTemp - 30) / 15, 0, 1);
+  const aqiSeverity = clamp((safeAqi - 50) / 250, 0, 1);
+
+  const liveRiskScore = Math.round(
+    (rainSeverity * 0.45 + heatSeverity * 0.3 + aqiSeverity * 0.25) * 100,
+  );
+
+  let triggerBonus = 0;
+
+  if (safeRainProb > 80) {
+    triggerBonus += 6;
+    breakdown.push({
+      factor: "Extreme rain probability (>80%)",
+      impact: "+₹6",
+    });
+  } else if (safeRainProb > 60) {
+    triggerBonus += 4;
+    breakdown.push({
+      factor: "High rain probability (>60%)",
+      impact: "+₹4",
+    });
+  }
+
+  if (safeTemp > 45) {
+    triggerBonus += 6;
+    breakdown.push({ factor: "Severe heat (>45°C)", impact: "+₹6" });
+  } else if (safeTemp > 40) {
+    triggerBonus += 3;
+    breakdown.push({ factor: "Extreme heat (>40°C)", impact: "+₹3" });
+  }
+
+  if (safeAqi > 200) {
+    triggerBonus += 8;
+    breakdown.push({ factor: "Hazardous AQI (>200)", impact: "+₹8" });
+  } else if (safeAqi > 150) {
+    triggerBonus += 4;
+    breakdown.push({ factor: "Poor AQI (>150)", impact: "+₹4" });
+  }
+
+  const severeTriggerCount = [
+    safeRainProb > 60,
+    safeTemp > 40,
+    safeAqi > 150,
+  ].filter(Boolean).length;
+  if (severeTriggerCount >= 2) {
+    triggerBonus += 5;
+    breakdown.push({ factor: "Compound disruption signal", impact: "+₹5" });
+  }
+
+  const variableSurcharge = Math.round(liveRiskScore * 0.35);
+  const liveSurcharge = Math.max(0, variableSurcharge + triggerBonus);
+
+  breakdown.unshift({
+    factor: `Live disruption score (${liveRiskScore}/100)`,
+    impact: `+₹${variableSurcharge}`,
+  });
+
+  return {
+    liveRiskScore,
+    liveSurcharge,
+    breakdown,
+  };
+}
+
 app.get("/", (req, res) => {
   res.send("GigAssure AI Risk Engine is running! 🚀");
 });
 
 app.post("/api/calculate-premium", async (req, res) => {
-  const { city, platform = "Zomato", deliveries = 20 } = req.body;
+  const {
+    city,
+    platform = "Zomato",
+    deliveries = 20,
+    basePrice = 0,
+  } = req.body;
 
   if (!city) {
     return res
@@ -127,11 +188,9 @@ app.post("/api/calculate-premium", async (req, res) => {
     }
 
     if (typeof lat !== "number" || typeof lon !== "number") {
-      return res
-        .status(400)
-        .json({
-          error: `Location '${city}' not found for live risk analysis.`,
-        });
+      return res.status(400).json({
+        error: `Location '${city}' not found for live risk analysis.`,
+      });
     }
 
     // 2. Weather & AQI APIs
@@ -152,49 +211,27 @@ app.post("/api/calculate-premium", async (req, res) => {
     const rawPM25 = aqiRes.data.current.pm2_5 || 15;
     const indianAQI = calculateIndianAQI(rawPM25);
 
-    const cityKey = city.toLowerCase();
-    const state = CITY_TO_STATE[cityKey] || city;
-    const stateCompensation = STATE_COMPENSATION[state] || 8;
-
     // 3. AI Pricing Engine Math
-    const premium = 45 + stateCompensation;
-    let breakdown = [];
-
-    breakdown.push({
-      factor: `State Compensation (${state})`,
-      impact: `+₹${stateCompensation}`,
+    const livePricing = calculateLiveDisruptionPremium({
+      rainProb,
+      temp,
+      aqi: indianAQI,
     });
-
-    const liveRiskSignals = [];
-    if (rainProb > 60) {
-      liveRiskSignals.push({
-        factor: "High Rain Probability (>60%)",
-        impact: "+₹0",
-      });
-    }
-
-    if (temp > 40) {
-      liveRiskSignals.push({ factor: "Extreme Heat Alert", impact: "+₹0" });
-    }
-
-    if (indianAQI > 150) {
-      liveRiskSignals.push({
-        factor: "Severe NAQI detected (>150)",
-        impact: "+₹0",
-      });
-    }
-
-    const finalPremium = Math.max(premium, 30); // Absolute floor price
+    const safeBasePrice = Number.isFinite(Number(basePrice))
+      ? Math.max(Number(basePrice), 0)
+      : 0;
+    const finalPremium = safeBasePrice + livePricing.liveSurcharge;
 
     // 4. Send back to React
     res.json({
       success: true,
       city: city,
-      state,
-      stateCompensation,
       liveData: { temp, rainProb, aqi: indianAQI }, // Sending the Indian AQI back
       finalPremium: finalPremium,
-      breakdown: [...breakdown, ...liveRiskSignals],
+      liveRiskScore: livePricing.liveRiskScore,
+      breakdown: livePricing.breakdown,
+      basePrice: safeBasePrice,
+      liveSurcharge: livePricing.liveSurcharge,
     });
   } catch (error) {
     console.error("Pricing Engine Error:", error.message);

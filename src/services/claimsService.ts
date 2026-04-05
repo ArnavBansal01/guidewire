@@ -1,101 +1,135 @@
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { auth, db } from "../firebase";
+import {
+  addDoc,
+  collection,
+  doc,
+  getDocs,
+  onSnapshot,
+  serverTimestamp,
+  updateDoc,
+  type DocumentData,
+  type QuerySnapshot,
+} from "firebase/firestore";
+import { db } from "../firebase";
 
-const API_URL = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
-const API_BASES = [API_URL, "http://localhost:5000"].filter(Boolean);
-const CLAIMS_BASE_PATHS = ["/api/admin/claims", "/api/claims"];
-
-type ClaimRecord = {
+export type ClaimRecord = {
   id: string;
   workerName?: string;
   platform?: string;
   location?: string;
   city?: string;
   triggerSource?: string;
+  triggerType?: string;
   amount?: number;
   fraudRisk?: string;
   status?: string;
   confidenceScore?: number;
-  createdAt?: string;
+  timestamp?: unknown;
+  createdAt?: unknown;
+  updatedAt?: unknown;
 };
 
-const getAuthHeader = async (): Promise<Record<string, string>> => {
-  const user = await new Promise<any>((resolve) => {
-    if (auth.currentUser) {
-      resolve(auth.currentUser);
-      return;
+const CLAIMS_COLLECTION = "claims";
+
+const mapClaimDoc = (docSnap: { id: string; data: () => DocumentData }) => {
+  const data = docSnap.data();
+  return {
+    id: docSnap.id,
+    workerName: data.workerName || data.worker || "Unknown",
+    platform: data.platform || "",
+    location: data.location || data.city || "",
+    city: data.city || data.location || "",
+    triggerSource: data.triggerSource || data.triggerType || "Manual",
+    triggerType: data.triggerType,
+    amount: Number(data.amount) || 0,
+    fraudRisk: (data.fraudRisk || "low").toString(),
+    status: (data.status || "PENDING").toString(),
+    confidenceScore: Number(data.confidenceScore) || 75,
+    timestamp: data.timestamp,
+    createdAt: data.createdAt,
+    updatedAt: data.updatedAt,
+  } as ClaimRecord;
+};
+
+const sortClaimsByTimeDesc = (claims: ClaimRecord[]) => {
+  const toMillis = (value: unknown) => {
+    if (!value) return 0;
+    if (typeof value === "number") return value;
+    if (typeof value === "string") {
+      const parsed = Date.parse(value);
+      return Number.isFinite(parsed) ? parsed : 0;
     }
-
-    const timeout = setTimeout(() => resolve(null), 5000);
-    const unsubscribe = auth.onAuthStateChanged((u) => {
-      clearTimeout(timeout);
-      unsubscribe();
-      resolve(u);
-    });
-  });
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    if (
+      typeof value === "object" &&
+      value !== null &&
+      "toMillis" in value &&
+      typeof (value as { toMillis: unknown }).toMillis === "function"
+    ) {
+      return (value as { toMillis: () => number }).toMillis();
+    }
+    if (
+      typeof value === "object" &&
+      value !== null &&
+      "seconds" in value &&
+      typeof (value as { seconds: unknown }).seconds === "number"
+    ) {
+      return (value as { seconds: number }).seconds * 1000;
+    }
+    return 0;
   };
 
-  if (!user) {
-    return headers;
-  }
-
-  const token = await user.getIdToken(true);
-  headers.Authorization = `Bearer ${token}`;
-  return headers;
-};
-
-const callClaimsApi = async (
-  method: "GET" | "PATCH",
-  suffix: string,
-  headers: Record<string, string>,
-) => {
-  let lastError: unknown = null;
-
-  for (const base of API_BASES) {
-    for (const claimsPath of CLAIMS_BASE_PATHS) {
-      try {
-        const response = await fetch(`${base}${claimsPath}${suffix}`, {
-          method,
-          headers,
-        });
-        const json = await response.json();
-
-        if (!response.ok || !json.success) {
-          throw new Error(json?.error || `Request failed: ${response.status}`);
-        }
-
-        return json;
-      } catch (error) {
-        lastError = error;
-      }
-    }
-  }
-
-  throw lastError || new Error("All claims API endpoints failed");
+  return [...claims].sort((a, b) => {
+    const aTime = Math.max(toMillis(a.timestamp), toMillis(a.createdAt));
+    const bTime = Math.max(toMillis(b.timestamp), toMillis(b.createdAt));
+    return bTime - aTime;
+  });
 };
 
 export const getClaims = async (): Promise<ClaimRecord[]> => {
-  const headers = await getAuthHeader();
-  const json = await callClaimsApi("GET", "", headers);
+  const snapshot = await getDocs(collection(db, CLAIMS_COLLECTION));
+  return sortClaimsByTimeDesc(snapshot.docs.map(mapClaimDoc));
+};
 
-  return Array.isArray(json.data) ? json.data : [];
+export const subscribeClaimsRealtime = (
+  onData: (claims: ClaimRecord[]) => void,
+  onError?: (error: unknown) => void,
+) => {
+  return onSnapshot(
+    collection(db, CLAIMS_COLLECTION),
+    (snapshot: QuerySnapshot<DocumentData>) => {
+      onData(sortClaimsByTimeDesc(snapshot.docs.map(mapClaimDoc)));
+    },
+    (error) => {
+      if (onError) {
+        onError(error);
+      }
+    },
+  );
 };
 
 export const approveClaim = async (id: string): Promise<ClaimRecord> => {
-  const headers = await getAuthHeader();
-  const json = await callClaimsApi("PATCH", `/${id}/approve`, headers);
+  const claimRef = doc(db, CLAIMS_COLLECTION, id);
+  await updateDoc(claimRef, {
+    status: "APPROVED",
+    updatedAt: serverTimestamp(),
+  });
 
-  return json.data as ClaimRecord;
+  return {
+    id,
+    status: "APPROVED",
+  };
 };
 
 export const rejectClaim = async (id: string): Promise<ClaimRecord> => {
-  const headers = await getAuthHeader();
-  const json = await callClaimsApi("PATCH", `/${id}/reject`, headers);
+  const claimRef = doc(db, CLAIMS_COLLECTION, id);
+  await updateDoc(claimRef, {
+    status: "REJECTED",
+    updatedAt: serverTimestamp(),
+  });
 
-  return json.data as ClaimRecord;
+  return {
+    id,
+    status: "REJECTED",
+  };
 };
 
 export const createSimulatedClaim = async ({
@@ -107,13 +141,18 @@ export const createSimulatedClaim = async ({
   selectedDisruption: string;
   amount: number;
 }): Promise<void> => {
-  await addDoc(collection(db, "claims"), {
+  await addDoc(collection(db, CLAIMS_COLLECTION), {
     workerName: "Simulated Deployment",
-    amount: amount,
-    status: "PAID",
+    amount,
+    status: "PENDING",
+    confidenceScore: 80,
+    fraudRisk: "medium",
     triggerType: selectedDisruption,
+    triggerSource: selectedDisruption,
     location: selectedCity,
     timeToPay: "58s",
     timestamp: serverTimestamp(),
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
   });
 };

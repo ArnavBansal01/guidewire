@@ -1,10 +1,16 @@
-import { collection, getDocs } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  onSnapshot,
+  type DocumentData,
+} from "firebase/firestore";
 import { auth, db } from "../firebase";
 import type {
   AdminStats,
   UserProfile,
   AdminSystemIntelligence,
 } from "../types/domain";
+import type { ClaimRecord } from "./claimsService";
 
 const API_URL = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
 const API_BASES = [API_URL, "http://localhost:5000"].filter(Boolean);
@@ -56,6 +62,229 @@ const fetchFromApi = async (path: string, headers: Record<string, string>) => {
   }
 
   throw lastError || new Error("All admin API endpoints failed");
+};
+
+const toMillis = (value: unknown): number => {
+  if (!value) return 0;
+  if (typeof value === "number") return value;
+  if (typeof value === "string") {
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    "toMillis" in value &&
+    typeof (value as { toMillis: unknown }).toMillis === "function"
+  ) {
+    return (value as { toMillis: () => number }).toMillis();
+  }
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    "seconds" in value &&
+    typeof (value as { seconds: unknown }).seconds === "number"
+  ) {
+    return (value as { seconds: number }).seconds * 1000;
+  }
+  return 0;
+};
+
+const normalizeStatus = (
+  status?: string,
+): "PENDING" | "APPROVED" | "REJECTED" | "PAID" => {
+  const upper = (status || "PENDING").toUpperCase();
+  if (upper === "APPROVED") return "APPROVED";
+  if (upper === "REJECTED") return "REJECTED";
+  if (upper === "PAID") return "PAID";
+  return "PENDING";
+};
+
+const getClaimTimestamp = (claim: ClaimRecord) => {
+  return Math.max(
+    toMillis(claim.updatedAt),
+    toMillis(claim.timestamp),
+    toMillis(claim.createdAt),
+  );
+};
+
+const inferDisruptionFromClaim = (claim: ClaimRecord) => {
+  return claim.triggerSource || claim.triggerType || "Unknown disruption";
+};
+
+export const buildAdminStatsFromData = (
+  users: UserProfile[],
+  claims: ClaimRecord[],
+): AdminStats => {
+  const activePolicies = users.filter((user) =>
+    Boolean(user.activePlan),
+  ).length;
+
+  let totalPayouts = 0;
+  let fraudAlerts = 0;
+
+  claims.forEach((claim) => {
+    const status = normalizeStatus(claim.status);
+    const amount = Number(claim.amount) || 0;
+    const fraudRisk = (claim.fraudRisk || "").toString().toLowerCase();
+
+    if (status === "APPROVED" || status === "PAID") {
+      totalPayouts += amount;
+    }
+    if (status === "PENDING" || fraudRisk === "high") {
+      fraudAlerts += 1;
+    }
+  });
+
+  return {
+    totalUsers: users.length,
+    activePolicies,
+    totalPayouts,
+    fraudAlerts,
+  };
+};
+
+export const buildSystemIntelligenceFromData = (
+  users: UserProfile[],
+  claims: ClaimRecord[],
+): AdminSystemIntelligence => {
+  const now = Date.now();
+  const oneHourAgo = now - 60 * 60 * 1000;
+
+  const recentClaims = claims
+    .filter((claim) => getClaimTimestamp(claim) >= oneHourAgo)
+    .sort((a, b) => getClaimTimestamp(b) - getClaimTimestamp(a));
+
+  const totalPayouts = claims.reduce((sum, claim) => {
+    const status = normalizeStatus(claim.status);
+    if (status === "APPROVED" || status === "PAID") {
+      return sum + (Number(claim.amount) || 0);
+    }
+    return sum;
+  }, 0);
+
+  const highRiskClaims = claims.filter(
+    (claim) => (claim.fraudRisk || "").toString().toLowerCase() === "high",
+  );
+
+  const suspiciousClaims = claims.filter(
+    (claim) =>
+      normalizeStatus(claim.status) === "PENDING" ||
+      (claim.fraudRisk || "").toString().toLowerCase() !== "low",
+  );
+
+  const disruptionCounts = claims.reduce<Record<string, number>>(
+    (acc, claim) => {
+      const key = inferDisruptionFromClaim(claim);
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    },
+    {},
+  );
+
+  const activeDisruptions = Object.entries(disruptionCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4)
+    .map(([name, count]) => `${name} (${count})`);
+
+  const claimsByCity = claims.reduce<Record<string, number>>((acc, claim) => {
+    const key = claim.city || claim.location || "Unknown";
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+  const highRiskCities = Object.values(claimsByCity).filter(
+    (count) => count >= 2,
+  ).length;
+
+  const eventsLog = recentClaims.slice(0, 6).map((claim) => ({
+    id: claim.id,
+    worker: claim.workerName || "Unknown worker",
+    city: claim.city || claim.location || "Unknown city",
+    status: normalizeStatus(claim.status),
+    timestamp: getClaimTimestamp(claim) || now,
+    amount: Number(claim.amount) || 0,
+  }));
+
+  const approvedOrPaidCount = claims.filter((claim) => {
+    const status = normalizeStatus(claim.status);
+    return status === "APPROVED" || status === "PAID";
+  }).length;
+  const lossRatio = approvedOrPaidCount
+    ? Number(
+        (
+          (totalPayouts / Math.max(approvedOrPaidCount * 1200, 1)) *
+          100
+        ).toFixed(1),
+      )
+    : 0;
+
+  return {
+    health: {
+      activeUsers: users.length,
+      activePolicies: users.filter((user) => Boolean(user.activePlan)).length,
+      uptime: Math.floor((performance.now?.() || 0) / 1000),
+      apiResponseTime: 0,
+    },
+    financial: {
+      totalPayouts,
+      premiumCollected:
+        users.filter((user) => Boolean(user.activePlan)).length * 480,
+      lossRatio,
+    },
+    fraud: {
+      suspiciousClaims: suspiciousClaims.length,
+      flaggedWorkers: highRiskClaims.length,
+      highRiskCount: highRiskClaims.length,
+    },
+    activity: {
+      recentClaimsCount: recentClaims.length,
+      eventsLog,
+    },
+    environment: {
+      highRiskCities,
+      avgAqi: 0,
+      activeDisruptions:
+        activeDisruptions.length > 0
+          ? activeDisruptions
+          : ["No active disruptions reported"],
+      riskScoreIndex: Math.min(
+        100,
+        Math.round(
+          (suspiciousClaims.length / Math.max(claims.length, 1)) * 100,
+        ),
+      ),
+    },
+  };
+};
+
+export const subscribeUsersRealtime = (
+  onData: (users: UserProfile[]) => void,
+  onError?: (error: unknown) => void,
+) => {
+  return onSnapshot(
+    collection(db, "users"),
+    (snapshot) => {
+      const users = snapshot.docs.map((docSnap) => {
+        const data = docSnap.data() as DocumentData;
+        return {
+          id: docSnap.id,
+          fullName: data.fullName,
+          email: data.email,
+          phone: data.phone,
+          platform: data.platform,
+          city: data.city,
+          trustScore: data.trustScore,
+          activePlan: data.activePlan,
+        } as UserProfile;
+      });
+      onData(users);
+    },
+    (error) => {
+      if (onError) {
+        onError(error);
+      }
+    },
+  );
 };
 
 // 📊 FETCH DASHBOARD STATS + USERS

@@ -1,36 +1,31 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
 import "./AdminDashboard.css";
-import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
 import {
-  adminSidebarSections,
+  claimsFilters,
   analyticsBars,
   cityReadinessScores,
   cityRiskSummary,
-  claimsFilters,
-  coverageGapCards,
-  policiesTableRows,
-  sampleAdminUsers,
   supportTickets,
   threatEvents,
   threatSignals,
-  claimsTableRows,
 } from "../data/adminDashboardContent";
 import {
-  fetchAdminDashboardData,
-  fetchSystemIntelligence,
+  buildAdminStatsFromData,
+  buildSystemIntelligenceFromData,
+  subscribeUsersRealtime,
 } from "../services/adminService";
 import { buildInitialAdminTerminalLogs } from "../services/adminConsoleService";
 import { cities } from "../mockData";
 import LocationSearchSelect from "../components/LocationSearchSelect";
 import type { AdminStats, UserProfile } from "../types/domain";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import {
-  getClaims,
+  type ClaimRecord,
   approveClaim,
   rejectClaim,
   createSimulatedClaim,
+  subscribeClaimsRealtime,
 } from "../services/claimsService";
 
 const getErrorMessage = (err: unknown) =>
@@ -48,11 +43,27 @@ type AdminPage =
   | "settings";
 
 const fallbackStats: AdminStats = {
-  totalUsers: 4,
-  activePolicies: 2,
-  totalPayouts: 2150,
+  totalUsers: 0,
+  activePolicies: 0,
+  totalPayouts: 0,
   fraudAlerts: 0,
 };
+
+const cleanSidebarSections = [
+  {
+    label: "Main",
+    items: [
+      { id: "command", label: "Command Center", icon: "⚡" },
+      { id: "claims-mgmt", label: "Claims", icon: "📋" },
+      { id: "workers", label: "Workers", icon: "👥" },
+      { id: "policies", label: "Policies", icon: "🛡️" },
+    ],
+  },
+  {
+    label: "Account",
+    items: [{ id: "settings", label: "Settings", icon: "⚙️" }],
+  },
+] as const;
 
 const normalizeStatus = (status?: string) => {
   const normalized = (status || "PENDING").toUpperCase();
@@ -69,14 +80,33 @@ const normalizeFraudRisk = (fraudRisk?: string) => {
   return "Low";
 };
 
+type AdminClaimRow = {
+  id: string;
+  worker: string;
+  sub?: string;
+  city?: string;
+  trigger?: string;
+  amount: string;
+  fraudRisk?: string;
+  fraudTone?: "green" | "orange" | "red";
+  status?: string;
+  statusTone?: "green" | "yellow" | "red";
+  confidence: number;
+  realId?: string;
+  platform?: string;
+  location?: string;
+};
+
 const Admin = () => {
-  const navigate = useNavigate();
-  const { signOutUser } = useAuth();
-  const { theme, toggleTheme } = useTheme();
+  const { theme } = useTheme();
   const [activePage, setActivePage] = useState<AdminPage>("command");
-  const [, setStats] = useState<AdminStats>(fallbackStats);
   const [users, setUsers] = useState<UserProfile[]>([]);
-  const [, setLoading] = useState(true);
+  const [usersLoaded, setUsersLoaded] = useState(false);
+  const [realClaims, setRealClaims] = useState<ClaimRecord[]>([]);
+  const [claimsLoading, setClaimsLoading] = useState(true);
+  const [claimsError, setClaimsError] = useState(false);
+  const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<string>("");
   const [claimsFilter, setClaimsFilter] =
     useState<(typeof claimsFilters)[number]>("All");
   const [claimsSearch, setClaimsSearch] = useState("");
@@ -84,6 +114,7 @@ const Admin = () => {
   const [simCity, setSimCity] = useState("");
   const [simType, setSimType] = useState("");
   const [simSeverity, setSimSeverity] = useState("High");
+  const [pendingClaimIds, setPendingClaimIds] = useState<string[]>([]);
   const [preview, setPreview] = useState<{
     workers: number;
     payout: number;
@@ -93,162 +124,192 @@ const Admin = () => {
     "[INFO] 9 admin modules registered",
   ]);
 
-  // ── FETCH SYSTEM INTELLIGENCE ──
-  const { data: intel, isLoading: intelLoading } = useQuery({
-    queryKey: ["systemIntel"],
-    queryFn: fetchSystemIntelligence,
-    refetchInterval: 10000,
-  });
+  useEffect(() => {
+    const markSynced = () => {
+      setIsRealtimeConnected(true);
+      setLastSyncedAt(new Date().toLocaleTimeString("en-IN"));
+    };
 
-  // ── FETCH CLAIMS ──
-  const {
-    data: realClaims = [],
-    refetch,
-    isLoading: claimsLoading,
-    isError: claimsError,
-  } = useQuery({
-    queryKey: ["claims"],
-    queryFn: getClaims,
-    refetchInterval: 3000,
-    refetchOnWindowFocus: true,
-    staleTime: 0,
-  });
+    const usersUnsub = subscribeUsersRealtime(
+      (liveUsers) => {
+        setUsers(liveUsers);
+        setUsersLoaded(true);
+        markSynced();
+      },
+      (error) => {
+        console.error("Users realtime listener failed:", error);
+        setUsersLoaded(true);
+        setIsRealtimeConnected(false);
+        setTerminalLogs((prev) => [
+          ...prev,
+          `[WARN] Users realtime sync failed: ${getErrorMessage(error)}`,
+        ]);
+      },
+    );
+
+    const claimsUnsub = subscribeClaimsRealtime(
+      (claims) => {
+        setRealClaims(claims);
+        setClaimsLoading(false);
+        setClaimsError(false);
+        markSynced();
+      },
+      (error) => {
+        console.error("Claims realtime listener failed:", error);
+        setClaimsLoading(false);
+        setClaimsError(true);
+        setIsRealtimeConnected(false);
+      },
+    );
+
+    return () => {
+      usersUnsub();
+      claimsUnsub();
+    };
+  }, []);
+
+  const displayUsers: UserProfile[] = users;
+
+  const stats: AdminStats = useMemo(() => {
+    if (!usersLoaded && realClaims.length === 0) {
+      return fallbackStats;
+    }
+    return buildAdminStatsFromData(displayUsers, realClaims);
+  }, [displayUsers, realClaims, usersLoaded]);
+
+  const intel = useMemo(
+    () => buildSystemIntelligenceFromData(displayUsers, realClaims),
+    [displayUsers, realClaims],
+  );
+
+  const intelLoading = !usersLoaded && claimsLoading;
 
   // ── APPROVE MUTATION ──
   const approveMutation = useMutation({
     mutationFn: (id: string) => approveClaim(id),
+    onMutate: async (id: string) => {
+      setPendingClaimIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+      setRealClaims((prev) =>
+        prev.map((claim) =>
+          claim.id === id ? { ...claim, status: "APPROVED" } : claim,
+        ),
+      );
+      return { id };
+    },
     onSuccess: (_data: unknown, id: string) => {
-      void refetch();
       setTerminalLogs((prev) => [
         ...prev,
         `[OK] Claim ${id} approved successfully.`,
       ]);
     },
-    onError: (err: unknown, id: string) => {
+    onError: (err: unknown, id: string, context?: { id: string }) => {
+      const rollbackId = context?.id || id;
+      setRealClaims((prev) =>
+        prev.map((claim) =>
+          claim.id === rollbackId ? { ...claim, status: "PENDING" } : claim,
+        ),
+      );
       setTerminalLogs((prev) => [
         ...prev,
         `[ERROR] Approve failed for ${id}: ${getErrorMessage(err)}`,
       ]);
+    },
+    onSettled: (_data, _error, id) => {
+      setPendingClaimIds((prev) =>
+        prev.filter((pendingId) => pendingId !== id),
+      );
     },
   });
 
   // ── REJECT MUTATION ──
   const rejectMutation = useMutation({
     mutationFn: (id: string) => rejectClaim(id),
+    onMutate: async (id: string) => {
+      setPendingClaimIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+      setRealClaims((prev) =>
+        prev.map((claim) =>
+          claim.id === id ? { ...claim, status: "REJECTED" } : claim,
+        ),
+      );
+      return { id };
+    },
     onSuccess: (_data: unknown, id: string) => {
-      void refetch();
       setTerminalLogs((prev) => [
         ...prev,
         `[OK] Claim ${id} rejected successfully.`,
       ]);
     },
-    onError: (err: unknown, id: string) => {
+    onError: (err: unknown, id: string, context?: { id: string }) => {
+      const rollbackId = context?.id || id;
+      setRealClaims((prev) =>
+        prev.map((claim) =>
+          claim.id === rollbackId ? { ...claim, status: "PENDING" } : claim,
+        ),
+      );
       setTerminalLogs((prev) => [
         ...prev,
         `[ERROR] Reject failed for ${id}: ${getErrorMessage(err)}`,
       ]);
     },
+    onSettled: (_data, _error, id) => {
+      setPendingClaimIds((prev) =>
+        prev.filter((pendingId) => pendingId !== id),
+      );
+    },
   });
-
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const data = await fetchAdminDashboardData();
-        setStats({
-          totalUsers: data.stats.totalUsers || fallbackStats.totalUsers,
-          activePolicies:
-            data.stats.activePolicies || fallbackStats.activePolicies,
-          totalPayouts: data.stats.totalPayouts || fallbackStats.totalPayouts,
-          fraudAlerts: data.stats.fraudAlerts || fallbackStats.fraudAlerts,
-        });
-        setUsers(data.users);
-      } catch (error) {
-        console.error("Error fetching admin dashboard:", error);
-        setTerminalLogs((prev) => [
-          ...prev,
-          "[WARN] Live admin data unavailable, showing fallback content.",
-        ]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    void load();
-  }, []);
 
   useEffect(() => {
     if (!claimsError) return;
     setTerminalLogs((prev) => {
       if (
         prev.includes(
-          "[WARN] Claims API unavailable. Showing fallback claims data.",
+          "[WARN] Claims realtime stream unavailable. Live claims cannot be loaded.",
         )
       ) {
         return prev;
       }
       return [
         ...prev,
-        "[WARN] Claims API unavailable. Showing fallback claims data.",
+        "[WARN] Claims realtime stream unavailable. Live claims cannot be loaded.",
       ];
     });
   }, [claimsError]);
 
   // ── BUTTON HANDLERS ──
   const handleApprove = (id: string) => {
-    if (id.startsWith("#")) {
-      setTerminalLogs((prev) => [
-        ...prev,
-        "[INFO] Demo claim — connect live data to approve.",
-      ]);
-      return;
-    }
     approveMutation.mutate(id);
   };
 
   const handleReject = (id: string) => {
-    if (id.startsWith("#")) {
-      setTerminalLogs((prev) => [
-        ...prev,
-        "[INFO] Demo claim — connect live data to reject.",
-      ]);
-      return;
-    }
     rejectMutation.mutate(id);
   };
 
-  const displayUsers: UserProfile[] = users.length
-    ? users
-    : ([...sampleAdminUsers] as UserProfile[]);
+  const claimsSource: AdminClaimRow[] = realClaims.map((claim) => ({
+    id: claim.id,
+    worker: claim.workerName || "Unknown",
+    sub: `${claim.platform || "Platform unavailable"} · ${claim.location || "Unknown city"}`,
+    city: claim.location || "",
+    trigger: claim.triggerSource || claim.triggerType || "Manual",
+    amount: `Rs ${(claim.amount || 0).toLocaleString("en-IN")}`,
+    fraudRisk: claim.fraudRisk || "Low",
+    fraudTone:
+      (claim.fraudRisk || "").toLowerCase() === "high"
+        ? "red"
+        : (claim.fraudRisk || "").toLowerCase() === "medium"
+          ? "orange"
+          : "green",
+    status: claim.status || "PENDING",
+    statusTone:
+      claim.status === "APPROVED"
+        ? "green"
+        : claim.status === "REJECTED"
+          ? "red"
+          : "yellow",
+    confidence: claim.confidenceScore || 75,
+    realId: claim.id,
+  }));
 
-  // ── CLAIMS SOURCE: real or fallback mock ──
-  const claimsSource =
-    realClaims.length > 0
-      ? realClaims.map((claim: any) => ({
-          id: claim.id,
-          worker: claim.workerName || "Unknown",
-          sub: `${claim.platform || ""} · ${claim.location || ""}`,
-          city: claim.location || "",
-          trigger: claim.triggerSource || "Manual",
-          amount: `Rs ${claim.amount || 0}`,
-          fraudRisk: claim.fraudRisk || "Low",
-          fraudTone:
-            claim.fraudRisk === "high"
-              ? "red"
-              : claim.fraudRisk === "medium"
-                ? "orange"
-                : "green",
-          status: claim.status || "PENDING",
-          statusTone:
-            claim.status === "APPROVED"
-              ? "green"
-              : claim.status === "REJECTED"
-                ? "red"
-                : "yellow",
-          confidence: claim.confidenceScore || 75,
-          realId: claim.id,
-        }))
-      : [...claimsTableRows];
-
-  const normalizedClaimsSource = claimsSource.map((claim: any) => {
+  const normalizedClaimsSource = claimsSource.map((claim) => {
     const fraudRisk = normalizeFraudRisk(claim.fraudRisk);
     const status = normalizeStatus(claim.status);
     return {
@@ -274,13 +335,60 @@ const Admin = () => {
     };
   });
 
-  const filteredClaims = normalizedClaimsSource.filter((claim: any) => {
+  const filteredClaims = normalizedClaimsSource.filter((claim) => {
     const text = `${claim.id} ${claim.worker} ${claim.city}`.toLowerCase();
     const filterMatch =
       claimsFilter === "All" ||
       (claimsFilter === "Fraud Risk" && claim.fraudRisk !== "Low") ||
       normalizeStatus(claim.status) === claimsFilter;
     return filterMatch && text.includes(claimsSearch.toLowerCase());
+  });
+
+  const pendingClaims = normalizedClaimsSource.filter(
+    (claim) => claim.status === "Pending",
+  );
+  const approvedClaims = normalizedClaimsSource.filter(
+    (claim) => claim.status === "Approved",
+  );
+  const rejectedClaims = normalizedClaimsSource.filter(
+    (claim) => claim.status === "Rejected",
+  );
+
+  const activePolicyUsers = displayUsers.filter((user) =>
+    Boolean(user.activePlan),
+  );
+  const inactivePolicyUsersCount = Math.max(
+    displayUsers.length - activePolicyUsers.length,
+    0,
+  );
+
+  const policyRows = activePolicyUsers.map((user, index) => {
+    const userClaims = realClaims.filter(
+      (claim) =>
+        (claim.workerName || "").toLowerCase().trim() ===
+        (user.fullName || "").toLowerCase().trim(),
+    );
+
+    const paidAmount = userClaims.reduce(
+      (sum, claim) =>
+        normalizeStatus(claim.status) === "Approved"
+          ? sum + (claim.amount || 0)
+          : sum,
+      0,
+    );
+
+    return {
+      id: `POL-${user.id.slice(0, 6).toUpperCase()}-${String(index + 1).padStart(2, "0")}`,
+      worker: user.fullName || "Unnamed Worker",
+      sub: user.platform || "Platform unavailable",
+      plan: user.activePlan || "Active",
+      premium: "Rs 25 / week",
+      coverage: `Rs ${Math.max(5000, paidAmount + 5000).toLocaleString("en-IN")}`,
+      startDate: "Live policy",
+      city: user.city || "Unknown",
+      status: "Active",
+      claimsCount: userClaims.length,
+    };
   });
 
   const filteredWorkers = displayUsers.filter((user) =>
@@ -336,7 +444,7 @@ const Admin = () => {
     <div className={`admin-dashboard ${theme}`}>
       <div className="shell">
         <aside className="sidebar">
-          {adminSidebarSections.map((section) => (
+          {cleanSidebarSections.map((section) => (
             <div key={section.label}>
               <div className="sidebar-label">{section.label}</div>
               {section.items.map((item) => (
@@ -348,8 +456,10 @@ const Admin = () => {
                 >
                   <span className="sidebar-icon">{item.icon}</span>
                   {item.label}
-                  {"badge" in item ? (
-                    <span className="sidebar-badge">{item.badge}</span>
+                  {item.id === "claims-mgmt" ? (
+                    <span className="sidebar-badge">
+                      {pendingClaims.length}
+                    </span>
                   ) : null}
                 </button>
               ))}
@@ -358,37 +468,19 @@ const Admin = () => {
         </aside>
 
         <main className="main">
-          <div className="topnav">
-            <div className="nav-brand">
-              <div className="nav-logo">GS</div>
-              <span className="nav-name">Admin Control Center</span>
-            </div>
-            <div className="nav-right">
-              <div className="nav-badge">Admin Access Only</div>
-              <button
-                className="theme-toggle"
-                type="button"
-                onClick={toggleTheme}
-              >
-                {theme === "dark" ? "Light Theme" : "Dark Theme"}
-              </button>
-              <button
-                className="btn-signout"
-                type="button"
-                onClick={() => navigate("/")}
-              >
-                Home
-              </button>
-              <button
-                className="btn-signout"
-                type="button"
-                onClick={() => {
-                  void signOutUser();
-                }}
-              >
-                Sign Out
-              </button>
-            </div>
+          <div className="live-status-row">
+            <span className={`badge ${isRealtimeConnected ? "green" : "red"}`}>
+              {isRealtimeConnected ? "Live stream connected" : "Disconnected"}
+            </span>
+            <span className="live-chip">Users: {stats.totalUsers}</span>
+            <span className="live-chip">Policies: {stats.activePolicies}</span>
+            <span className="live-chip">
+              Payouts: Rs {stats.totalPayouts.toLocaleString("en-IN")}
+            </span>
+            <span className="live-chip">Fraud alerts: {stats.fraudAlerts}</span>
+            <span className="live-chip live-sync">
+              Last sync: {lastSyncedAt || "Waiting for first snapshot..."}
+            </span>
           </div>
 
           {/* ── COMMAND CENTER ── */}
@@ -396,7 +488,7 @@ const Admin = () => {
             <>
               <Header
                 badge="Admin Access Only"
-                title="God Mode"
+                title="Command Center"
                 accent="Simulator"
                 subtitle="Control center for system health, fraud detection, and hackathon demonstrations. Phase 1 foundation active with 9 registered admin modules."
               />
@@ -587,52 +679,54 @@ const Admin = () => {
                   {intelLoading ? (
                     <div className="sub">Loading events...</div>
                   ) : (
-                    <table className="data-table">
-                      <thead>
-                        <tr>
-                          <th>Time</th>
-                          <th>Worker & City</th>
-                          <th>Status</th>
-                          <th>Amount</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {intel?.activity.eventsLog?.map((event: any) => (
-                          <tr key={event.id}>
-                            <td
-                              style={{
-                                color: "var(--text-muted)",
-                                fontSize: "11px",
-                              }}
-                            >
-                              {new Date(event.timestamp).toLocaleTimeString(
-                                [],
-                                { hour: "2-digit", minute: "2-digit" },
-                              )}
-                            </td>
-                            <td>
-                              <div className="name">{event.worker}</div>
-                              <div className="sub">{event.city}</div>
-                            </td>
-                            <td>
-                              <span
-                                className={`badge ${event.status === "APPROVED" ? "green" : event.status === "PENDING" ? "yellow" : "red"}`}
-                              >
-                                {event.status}
-                              </span>
-                            </td>
-                            <td
-                              style={{
-                                color: "var(--yellow)",
-                                fontWeight: "bold",
-                              }}
-                            >
-                              ₹{(event.amount || 0).toLocaleString()}
-                            </td>
+                    <div className="table-scroll">
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>Time</th>
+                            <th>Worker & City</th>
+                            <th>Status</th>
+                            <th>Amount</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {intel?.activity.eventsLog?.map((event) => (
+                            <tr key={event.id}>
+                              <td
+                                style={{
+                                  color: "var(--text-muted)",
+                                  fontSize: "11px",
+                                }}
+                              >
+                                {new Date(event.timestamp).toLocaleTimeString(
+                                  [],
+                                  { hour: "2-digit", minute: "2-digit" },
+                                )}
+                              </td>
+                              <td>
+                                <div className="name">{event.worker}</div>
+                                <div className="sub">{event.city}</div>
+                              </td>
+                              <td>
+                                <span
+                                  className={`badge ${event.status === "APPROVED" ? "green" : event.status === "PENDING" ? "yellow" : "red"}`}
+                                >
+                                  {event.status}
+                                </span>
+                              </td>
+                              <td
+                                style={{
+                                  color: "var(--yellow)",
+                                  fontWeight: "bold",
+                                }}
+                              >
+                                ₹{(event.amount || 0).toLocaleString()}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   )}
                 </Section>
                 <Section title="System Telemetry" tone="green">
@@ -658,7 +752,7 @@ const Admin = () => {
                       Monitoring Open-Meteo integration streams [OK]
                     </div>
                     <div className="t-ok">
-                      GigShield Core Systems operating normally.
+                      GigAssure Core Systems operating normally.
                     </div>
                     <br />
                     {terminalLogs.slice(-5).map((log, i) => {
@@ -694,47 +788,32 @@ const Admin = () => {
                   tone="teal"
                   icon="📋"
                   label="Total Claims"
-                  value={String(claimsSource.length || 3)}
-                  sub="All time"
+                  value={String(normalizedClaimsSource.length)}
+                  sub={`${activePolicyUsers.length} users with active policies`}
                 />
                 <Kpi
                   tone="yellow"
                   icon="⏳"
                   label="Pending"
-                  value={String(
-                    claimsSource.filter(
-                      (c: any) =>
-                        c.status === "PENDING" || c.status === "Pending",
-                    ).length || 3,
-                  )}
-                  sub="Awaiting review"
+                  value={String(pendingClaims.length)}
+                  sub={`${activePolicyUsers.length} policyholders in coverage`}
                 />
                 <Kpi
                   tone="green"
                   icon="✅"
                   label="Approved"
-                  value={String(
-                    claimsSource.filter(
-                      (c: any) =>
-                        c.status === "APPROVED" || c.status === "Approved",
-                    ).length || 0,
-                  )}
-                  sub="This month"
+                  value={String(approvedClaims.length)}
+                  sub="Settled claims"
                 />
                 <Kpi
                   tone="orange"
                   icon="❌"
                   label="Rejected"
-                  value={String(
-                    claimsSource.filter(
-                      (c: any) =>
-                        c.status === "REJECTED" || c.status === "Rejected",
-                    ).length || 0,
-                  )}
-                  sub="This month"
+                  value={String(rejectedClaims.length)}
+                  sub="Declined claims"
                 />
               </div>
-              <Section title="Claims Table">
+              <Section title="Claims Table" className="claims-compact">
                 <div className="search-bar-wrap">
                   <input
                     value={claimsSearch}
@@ -754,115 +833,211 @@ const Admin = () => {
                     </button>
                   ))}
                 </div>
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Claim ID</th>
-                      <th>Worker</th>
-                      <th>City</th>
-                      <th>Trigger Source</th>
-                      <th>Amount</th>
-                      <th>Fraud Risk</th>
-                      <th>Status</th>
-                      <th>Confidence</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {claimsLoading ? (
+                <div className="table-scroll">
+                  <table className="data-table">
+                    <thead>
                       <tr>
-                        <td
-                          colSpan={9}
-                          style={{ textAlign: "center", color: "var(--teal)" }}
-                        >
-                          Loading claims...
-                        </td>
+                        <th>Claim ID</th>
+                        <th>Worker</th>
+                        <th>City</th>
+                        <th>Trigger Source</th>
+                        <th>Amount</th>
+                        <th>Fraud Risk</th>
+                        <th>Status</th>
+                        <th>Confidence</th>
+                        <th>Actions</th>
                       </tr>
-                    ) : filteredClaims.length === 0 ? (
-                      <tr>
-                        <td
-                          colSpan={9}
-                          style={{
-                            textAlign: "center",
-                            color: "var(--text-muted)",
-                          }}
-                        >
-                          No claims found
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredClaims.map((claim: any) => (
-                        <tr key={claim.id}>
-                          <td style={{ color: "var(--teal)", fontWeight: 700 }}>
-                            {claim.id}
-                          </td>
-                          <td>
-                            <div className="name">{claim.worker}</div>
-                            <div className="sub">{claim.sub}</div>
-                          </td>
-                          <td>{claim.city}</td>
-                          <td>{claim.trigger}</td>
+                    </thead>
+                    <tbody>
+                      {claimsLoading ? (
+                        <tr>
                           <td
-                            style={{ color: "var(--yellow)", fontWeight: 700 }}
+                            colSpan={9}
+                            style={{
+                              textAlign: "center",
+                              color: "var(--teal)",
+                            }}
                           >
-                            {claim.amount}
-                          </td>
-                          <td>
-                            <span className={`badge ${claim.fraudTone}`}>
-                              {claim.fraudRisk}
-                            </span>
-                          </td>
-                          <td>
-                            <span className={`badge ${claim.statusTone}`}>
-                              {claim.status}
-                            </span>
-                          </td>
-                          <td>
-                            <div className="score-wrap">
-                              <div className="score-bar">
-                                <div
-                                  className="score-fill"
-                                  style={{ width: `${claim.confidence}%` }}
-                                />
-                              </div>
-                              <div className="score-val">
-                                {claim.confidence}%
-                              </div>
-                            </div>
-                          </td>
-                          <td>
-                            <div className="action-row">
-                              {/* ✅ FIXED: using useMutation */}
-                              <button
-                                className="btn btn-primary"
-                                type="button"
-                                disabled={approveMutation.isPending}
-                                onClick={() =>
-                                  handleApprove(claim.realId || claim.id)
-                                }
-                              >
-                                {approveMutation.isPending
-                                  ? "..."
-                                  : "✓ Approve"}
-                              </button>
-                              <button
-                                className="btn btn-danger"
-                                type="button"
-                                disabled={rejectMutation.isPending}
-                                onClick={() =>
-                                  handleReject(claim.realId || claim.id)
-                                }
-                              >
-                                {rejectMutation.isPending ? "..." : "✗ Reject"}
-                              </button>
-                            </div>
+                            Loading claims...
                           </td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+                      ) : filteredClaims.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={9}
+                            style={{
+                              textAlign: "center",
+                              color: "var(--text-muted)",
+                            }}
+                          >
+                            No claims found
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredClaims.map((claim) => (
+                          <tr key={claim.id}>
+                            <td
+                              style={{ color: "var(--teal)", fontWeight: 700 }}
+                            >
+                              {claim.id}
+                            </td>
+                            <td>
+                              <div className="name">{claim.worker}</div>
+                              <div className="sub">{claim.sub}</div>
+                            </td>
+                            <td>{claim.city}</td>
+                            <td>{claim.trigger}</td>
+                            <td
+                              style={{
+                                color: "var(--yellow)",
+                                fontWeight: 700,
+                              }}
+                            >
+                              {claim.amount}
+                            </td>
+                            <td>
+                              <span className={`badge ${claim.fraudTone}`}>
+                                {claim.fraudRisk}
+                              </span>
+                            </td>
+                            <td>
+                              <span className={`badge ${claim.statusTone}`}>
+                                {claim.status}
+                              </span>
+                            </td>
+                            <td>
+                              <div className="score-wrap">
+                                <div className="score-bar">
+                                  <div
+                                    className="score-fill"
+                                    style={{ width: `${claim.confidence}%` }}
+                                  />
+                                </div>
+                                <div className="score-val">
+                                  {claim.confidence}%
+                                </div>
+                              </div>
+                            </td>
+                            <td>
+                              <div className="action-row">
+                                {(() => {
+                                  const actionId = claim.realId || claim.id;
+                                  const isPending =
+                                    pendingClaimIds.includes(actionId);
+                                  return (
+                                    <>
+                                      <button
+                                        className="btn btn-primary"
+                                        type="button"
+                                        disabled={
+                                          isPending ||
+                                          claim.status === "Approved"
+                                        }
+                                        onClick={() => handleApprove(actionId)}
+                                      >
+                                        {isPending &&
+                                        claim.status === "Approved"
+                                          ? "..."
+                                          : claim.status === "Approved"
+                                            ? "Approved"
+                                            : "✓ Approve"}
+                                      </button>
+                                      <button
+                                        className="btn btn-danger"
+                                        type="button"
+                                        disabled={
+                                          isPending ||
+                                          claim.status === "Rejected"
+                                        }
+                                        onClick={() => handleReject(actionId)}
+                                      >
+                                        {isPending &&
+                                        claim.status === "Rejected"
+                                          ? "..."
+                                          : claim.status === "Rejected"
+                                            ? "Rejected"
+                                            : "✗ Reject"}
+                                      </button>
+                                    </>
+                                  );
+                                })()}
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </Section>
+              <div className="two-col">
+                <Section
+                  title="Approved Claims"
+                  tone="green"
+                  className="claims-compact"
+                >
+                  {approvedClaims.length === 0 ? (
+                    <div className="sub">No approved claims yet.</div>
+                  ) : (
+                    <div className="claims-stack">
+                      {approvedClaims.slice(0, 6).map((claim) => (
+                        <div
+                          key={`approved-${claim.id}`}
+                          className="claim-status-card approved"
+                        >
+                          <div>
+                            <div className="claim-status-title">
+                              {claim.worker}
+                            </div>
+                            <div className="sub">
+                              {claim.id} · {claim.city}
+                            </div>
+                          </div>
+                          <div className="claim-status-right">
+                            <span className="badge green">Approved</span>
+                            <div className="claim-amount-text">
+                              {claim.amount}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </Section>
+                <Section
+                  title="Rejected Claims"
+                  tone="red"
+                  className="claims-compact"
+                >
+                  {rejectedClaims.length === 0 ? (
+                    <div className="sub">No rejected claims yet.</div>
+                  ) : (
+                    <div className="claims-stack">
+                      {rejectedClaims.slice(0, 6).map((claim) => (
+                        <div
+                          key={`rejected-${claim.id}`}
+                          className="claim-status-card rejected"
+                        >
+                          <div>
+                            <div className="claim-status-title">
+                              {claim.worker}
+                            </div>
+                            <div className="sub">
+                              {claim.id} · {claim.city}
+                            </div>
+                          </div>
+                          <div className="claim-status-right">
+                            <span className="badge red">Rejected</span>
+                            <div className="claim-amount-text">
+                              {claim.amount}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </Section>
+              </div>
             </>
           )}
 
@@ -899,81 +1074,92 @@ const Admin = () => {
                     placeholder="Search worker name, city, platform..."
                   />
                 </div>
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Worker</th>
-                      <th>Platform / City</th>
-                      <th>Policy</th>
-                      <th>Total Claims</th>
-                      <th>Claim Ratio</th>
-                      <th>Stability Score</th>
-                      <th>Last Active</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredWorkers.map((user, index) => {
-                      const score = [98, 95, 91, 100][index] || 96;
-                      const claimCount = [1, 1, 1, 0][index] || 0;
-                      return (
-                        <tr key={user.id}>
-                          <td>
-                            <div className="name">{user.fullName}</div>
-                            <div className="sub">
-                              {user.email} · {user.phone}
-                            </div>
-                          </td>
-                          <td>
-                            <div className="name">{user.platform}</div>
-                            <div className="sub">{user.city}</div>
-                          </td>
-                          <td>
-                            <span
-                              className={`badge ${user.activePlan ? "teal" : "gray"}`}
-                            >
-                              {user.activePlan || "No Policy"}
-                            </span>
-                          </td>
-                          <td>{claimCount}</td>
-                          <td
-                            style={{
-                              color:
-                                score < 95 ? "var(--yellow)" : "var(--green)",
-                            }}
-                          >
-                            {score < 95 ? "Medium" : "Low"}
-                          </td>
-                          <td>
-                            <div className="score-wrap">
-                              <div className="score-bar">
-                                <div
-                                  className="score-fill"
-                                  style={{ width: `${score}%` }}
-                                />
+                <div className="table-scroll">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Worker</th>
+                        <th>Platform / City</th>
+                        <th>Policy</th>
+                        <th>Total Claims</th>
+                        <th>Claim Ratio</th>
+                        <th>Stability Score</th>
+                        <th>Last Active</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredWorkers.map((user) => {
+                        const score = Math.min(
+                          100,
+                          Math.max(0, user.trustScore || 80),
+                        );
+                        const claimCount = realClaims.filter(
+                          (claim) =>
+                            (claim.workerName || "").toLowerCase().trim() ===
+                            (user.fullName || "").toLowerCase().trim(),
+                        ).length;
+                        return (
+                          <tr key={user.id}>
+                            <td>
+                              <div className="name">{user.fullName}</div>
+                              <div className="sub">
+                                {user.email} · {user.phone}
                               </div>
-                              <div className="score-val">{score}%</div>
-                            </div>
-                          </td>
-                          <td style={{ color: "var(--text-muted)" }}>
-                            {["2h ago", "1h ago", "5h ago", "1d ago"][index] ||
-                              "Today"}
-                          </td>
-                          <td>
-                            <div className="action-row">
-                              <button className="btn btn-ghost" type="button">
-                                👁 View
-                              </button>
-                              <button className="btn btn-danger" type="button">
-                                🚩 Flag
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                            </td>
+                            <td>
+                              <div className="name">{user.platform}</div>
+                              <div className="sub">{user.city}</div>
+                            </td>
+                            <td>
+                              <span
+                                className={`badge ${user.activePlan ? "teal" : "gray"}`}
+                              >
+                                {user.activePlan || "No Policy"}
+                              </span>
+                            </td>
+                            <td>{claimCount}</td>
+                            <td
+                              style={{
+                                color:
+                                  score < 95 ? "var(--yellow)" : "var(--green)",
+                              }}
+                            >
+                              {score < 95 ? "Medium" : "Low"}
+                            </td>
+                            <td>
+                              <div className="score-wrap">
+                                <div className="score-bar">
+                                  <div
+                                    className="score-fill"
+                                    style={{ width: `${score}%` }}
+                                  />
+                                </div>
+                                <div className="score-val">{score}%</div>
+                              </div>
+                            </td>
+                            <td style={{ color: "var(--text-muted)" }}>
+                              {lastSyncedAt || "Live"}
+                            </td>
+                            <td>
+                              <div className="action-row">
+                                <button className="btn btn-ghost" type="button">
+                                  👁 View
+                                </button>
+                                <button
+                                  className="btn btn-danger"
+                                  type="button"
+                                >
+                                  🚩 Flag
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </Section>
             </>
           )}
@@ -988,91 +1174,135 @@ const Admin = () => {
                 subtitle="Manage all insurance plans — activate, deactivate, renew, and analyze coverage gaps."
               />
               <div className="kpi-grid">
-                <Kpi tone="green" icon="✅" label="Active Policies" value="2" />
-                <Kpi tone="teal" icon="⏸" label="Inactive" value="0" />
+                <Kpi
+                  tone="green"
+                  icon="✅"
+                  label="Active Policies"
+                  value={String(activePolicyUsers.length)}
+                  sub="Live policyholders"
+                />
+                <Kpi
+                  tone="teal"
+                  icon="⏸"
+                  label="Inactive"
+                  value={String(inactivePolicyUsersCount)}
+                  sub="Workers without active plan"
+                />
                 <Kpi
                   tone="yellow"
                   icon="⚡"
                   label="Total Premium"
-                  value="Rs 480"
+                  value={`Rs ${(activePolicyUsers.length * 25).toLocaleString("en-IN")}`}
+                  sub="Base weekly premium"
                 />
                 <Kpi
                   tone="orange"
                   icon="🛡️"
                   label="Max Coverage"
-                  value="Rs 9,000"
+                  value={
+                    policyRows.length
+                      ? `Rs ${Math.max(...policyRows.map((row) => Number(row.coverage.replace(/[^0-9]/g, "")) || 0)).toLocaleString("en-IN")}`
+                      : "Rs 0"
+                  }
                 />
               </div>
               <Section title="Policy Registry">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Policy ID</th>
-                      <th>Worker</th>
-                      <th>Plan Type</th>
-                      <th>Premium</th>
-                      <th>Coverage</th>
-                      <th>Start Date</th>
-                      <th>City</th>
-                      <th>Status</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {policiesTableRows.map((policy) => (
-                      <tr key={policy.id}>
-                        <td style={{ color: "var(--teal)", fontWeight: 700 }}>
-                          {policy.id}
-                        </td>
-                        <td>
-                          <div className="name">{policy.worker}</div>
-                          <div className="sub">{policy.sub}</div>
-                        </td>
-                        <td>
-                          <span className={`badge ${policy.planTone}`}>
-                            {policy.plan}
-                          </span>
-                        </td>
-                        <td>{policy.premium}</td>
-                        <td style={{ color: "var(--green)", fontWeight: 600 }}>
-                          {policy.coverage}
-                        </td>
-                        <td style={{ color: "var(--text-muted)" }}>
-                          {policy.startDate}
-                        </td>
-                        <td>{policy.city}</td>
-                        <td>
-                          <span className={`badge ${policy.statusTone}`}>
-                            {policy.status}
-                          </span>
-                        </td>
-                        <td>
-                          <div className="action-row">
-                            <button className="btn btn-ghost" type="button">
-                              Renew
-                            </button>
-                            <button className="btn btn-danger" type="button">
-                              Deactivate
-                            </button>
-                          </div>
-                        </td>
+                <div className="table-scroll">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Policy ID</th>
+                        <th>Worker</th>
+                        <th>Plan Type</th>
+                        <th>Premium</th>
+                        <th>Coverage</th>
+                        <th>Start Date</th>
+                        <th>City</th>
+                        <th>Claims</th>
+                        <th>Status</th>
+                        <th>Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {policyRows.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={10}
+                            style={{
+                              textAlign: "center",
+                              color: "var(--text-muted)",
+                            }}
+                          >
+                            No active policies found.
+                          </td>
+                        </tr>
+                      ) : (
+                        policyRows.map((policy) => (
+                          <tr key={policy.id}>
+                            <td
+                              style={{ color: "var(--teal)", fontWeight: 700 }}
+                            >
+                              {policy.id}
+                            </td>
+                            <td>
+                              <div className="name">{policy.worker}</div>
+                              <div className="sub">{policy.sub}</div>
+                            </td>
+                            <td>
+                              <span className="badge teal">{policy.plan}</span>
+                            </td>
+                            <td>{policy.premium}</td>
+                            <td
+                              style={{ color: "var(--green)", fontWeight: 600 }}
+                            >
+                              {policy.coverage}
+                            </td>
+                            <td style={{ color: "var(--text-muted)" }}>
+                              {policy.startDate}
+                            </td>
+                            <td>{policy.city}</td>
+                            <td>{policy.claimsCount}</td>
+                            <td>
+                              <span className="badge green">
+                                {policy.status}
+                              </span>
+                            </td>
+                            <td>
+                              <div className="action-row">
+                                <button className="btn btn-ghost" type="button">
+                                  Renew
+                                </button>
+                                <button
+                                  className="btn btn-danger"
+                                  type="button"
+                                >
+                                  Deactivate
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </Section>
               <Section title="Coverage Gap Detector" tone="orange">
-                <div className="three-col">
-                  {coverageGapCards.map((card) => (
-                    <div key={card.title} className="ticket">
-                      <div style={{ marginBottom: 8, fontSize: 20 }}>
-                        {card.icon}
-                      </div>
-                      <div className="ticket-title">{card.title}</div>
-                      <div className="ticket-body">{card.body}</div>
-                    </div>
-                  ))}
-                </div>
+                <MiniStat
+                  label="Workers With No Active Policy"
+                  value={String(inactivePolicyUsersCount)}
+                  tone={inactivePolicyUsersCount > 0 ? "orange" : "green"}
+                />
+                <MiniStat
+                  label="Workers With Active Policy"
+                  value={String(activePolicyUsers.length)}
+                  tone="green"
+                />
+                <MiniStat
+                  label="Policy Coverage Rate"
+                  value={`${displayUsers.length ? Math.round((activePolicyUsers.length / displayUsers.length) * 100) : 0}%`}
+                  tone="teal"
+                />
               </Section>
             </>
           )}
@@ -1529,6 +1759,7 @@ function Section(props: {
   title: string;
   children: React.ReactNode;
   tone?: "green" | "red" | "orange" | "yellow" | "teal";
+  className?: string;
 }) {
   const dotStyle = props.tone
     ? {
@@ -1537,7 +1768,7 @@ function Section(props: {
       }
     : undefined;
   return (
-    <div className="section-card">
+    <div className={`section-card ${props.className || ""}`.trim()}>
       <div className="section-title">
         <span className="dot" style={dotStyle} />
         {props.title}

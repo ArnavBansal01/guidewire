@@ -10,110 +10,36 @@ import {
   Info,
   Lock,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useUserProfile } from "../hooks/useUserProfile";
-import { calculateFinalPrice, getStateFromCity } from "../utils/PremiumLogic";
+
+import { plans, type PlanTier } from "../data/plans";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../contexts/AuthContext";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useUserProfile } from "../hooks/useUserProfile";
+import { useEnvironmentalPremium } from "../hooks/useEnvironmentalPremium";
 
-type PlanId = "basic" | "standard" | "premium";
+type PlanId = PlanTier["id"];
 
-type PlanData = {
-  id: PlanId;
-  name: string;
-  basePrice: number;
-  features: string[];
-  order: number;
-};
-
-type RiskContext = {
-  breakdown: Array<{ factor: string; impact: string }>;
-  liveData: {
-    temp: number;
-    rainProb: number;
-    aqi: number;
-  };
-};
-
-const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
-
-const PLAN_DATA: PlanData[] = [
-  {
-    id: "basic",
-    name: "GigAssure Basic",
-    basePrice: 35,
-    features: [
-      "Maximum payout: Rs 350/week",
-      "Capped at Rs 150/day",
-      "Covers Rain, Heat, AQI, Curfews",
-      "Zero manual paperwork",
-      "Dynamic premium adjustments",
-    ],
-    order: 1,
-  },
-  {
-    id: "standard",
-    name: "GigAssure Standard",
-    basePrice: 50,
-    features: [
-      "Maximum payout: Rs 600/week",
-      "Capped at Rs 250/day",
-      "Covers Rain, Heat, AQI, Curfews",
-      "Instant payout via Razorpay",
-      "Adaptive friction protection",
-    ],
-    order: 2,
-  },
-  {
-    id: "premium",
-    name: "GigAssure Premium",
-    basePrice: 90,
-    features: [
-      "Maximum payout: Rs 1000/week",
-      "Capped at Rs 400/day",
-      "Covers Rain, Heat, AQI, Curfews",
-      "Priority instant payout",
-      "Multi-dimensional verification",
-    ],
-    order: 3,
-  },
-];
-
-const PLAN_ID_SET = new Set<PlanId>(["basic", "standard", "premium"]);
+const PLAN_ID_SET = new Set<PlanId>(plans.map((p) => p.id));
 
 const normalizePlanId = (value: string | undefined | null): PlanId | null => {
-  if (!value) {
-    return null;
-  }
+  if (!value) return null;
 
   const normalized = value.toLowerCase().trim();
-  if (PLAN_ID_SET.has(normalized as PlanId)) {
-    return normalized as PlanId;
-  }
-
-  if (normalized.includes("premium")) {
-    return "premium";
-  }
-
-  if (normalized.includes("standard")) {
-    return "standard";
-  }
-
-  if (normalized.includes("basic")) {
-    return "basic";
-  }
+  if (PLAN_ID_SET.has(normalized as PlanId)) return normalized as PlanId;
+  if (normalized.includes("premium")) return "premium";
+  if (normalized.includes("standard")) return "standard";
+  if (normalized.includes("basic")) return "basic";
 
   return null;
 };
 
-const getPlanHierarchy = (planId: PlanId | null): number => {
-  if (!planId) {
-    return 0;
-  }
-
-  return PLAN_DATA.find((plan) => plan.id === planId)?.order ?? 0;
+const getPlanOrder = (planId: PlanId | null): number => {
+  if (!planId) return 0;
+  const idx = plans.findIndex((p) => p.id === planId);
+  return idx >= 0 ? idx + 1 : 0;
 };
 
 const Premium = () => {
@@ -124,88 +50,35 @@ const Premium = () => {
   const [selectedPlanId, setSelectedPlanId] = useState<PlanId | null>(null);
   const [updatingPlan, setUpdatingPlan] = useState(false);
   const [upgradeMessage, setUpgradeMessage] = useState<string>("");
-  const [riskContext, setRiskContext] = useState<RiskContext | null>(null);
 
   const city = profile?.city || "Unknown City";
-  const state = getStateFromCity(city);
   const trustScore = profile?.trustScore ?? 85;
   const activePlanId =
     normalizePlanId(profile?.activePlan) ||
     normalizePlanId(profile?.activePlanName);
   const activePlanName = profile?.activePlanName || "No Active Plan";
 
-  useEffect(() => {
-    if (!city || city === "Unknown City") {
-      setRiskContext(null);
-      return;
-    }
+  // ── Live environmental data via shared hook ──
+  const { data: envData } = useEnvironmentalPremium({
+    city: city !== "Unknown City" ? city : null,
+    platform: profile?.platform,
+    deliveries: profile?.avgDailyDeliveries,
+  });
 
-    let isMounted = true;
+  // ── Single source of truth: backend surcharge + plan base ──
+  const liveSurcharge = envData?.liveSurcharge ?? 0;
 
-    const fetchRiskContext = async () => {
-      try {
-        const response = await fetch(`${BACKEND_URL}/api/calculate-premium`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            city,
-            platform: profile?.platform || "Zomato",
-            deliveries: profile?.avgDailyDeliveries || 20,
-          }),
-        });
+  /** Compute per-plan weekly premium directly from backend surcharge */
+  const getWeeklyPremium = (plan: PlanTier) => plan.basePrice + liveSurcharge;
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch risk context");
-        }
-
-        const data = await response.json();
-        if (!isMounted) {
-          return;
-        }
-
-        setRiskContext({
-          breakdown: Array.isArray(data?.breakdown) ? data.breakdown : [],
-          liveData: {
-            temp: Number(data?.liveData?.temp ?? 0),
-            rainProb: Number(data?.liveData?.rainProb ?? 0),
-            aqi: Number(data?.liveData?.aqi ?? 0),
-          },
-        });
-      } catch {
-        if (isMounted) {
-          setRiskContext(null);
-        }
-      }
-    };
-
-    fetchRiskContext();
-    return () => {
-      isMounted = false;
-    };
-  }, [city, profile?.platform, profile?.avgDailyDeliveries]);
-
-  const pricingByPlan = useMemo(() => {
-    return PLAN_DATA.reduce(
-      (acc, plan) => {
-        acc[plan.id] = calculateFinalPrice({
-          basePrice: plan.basePrice,
-          city,
-          duration: 1,
-        });
-        return acc;
-      },
-      {} as Record<PlanId, ReturnType<typeof calculateFinalPrice>>,
-    );
-  }, [city]);
-
-  const premiumBreakdown = pricingByPlan.premium.breakdown;
-  const riskReasonItems = (riskContext?.breakdown || []).filter((item) => {
+  // Filter out meta-level AND stale compensation items from breakdown
+  const riskReasonItems = (envData?.breakdown || []).filter((item) => {
     const factor = item.factor.toLowerCase();
     return (
-      !factor.includes("state compensation") &&
-      !factor.includes("standard zone risk") &&
-      !factor.includes("safe zone") &&
-      !factor.includes("flood zone")
+      !factor.includes("live disruption score") &&
+      !factor.includes("compound disruption signal") &&
+      !factor.includes("compensation") &&
+      !factor.includes("state")
     );
   });
 
@@ -218,14 +91,14 @@ const Premium = () => {
       };
     }
 
-    const activePlanHierarchy = getPlanHierarchy(activePlanId);
-    const targetPlanHierarchy = getPlanHierarchy(planId);
+    const activeOrder = getPlanOrder(activePlanId);
+    const targetOrder = getPlanOrder(planId);
 
-    if (targetPlanHierarchy === activePlanHierarchy) {
+    if (targetOrder === activeOrder) {
       return { text: "Manage Plan", enabled: true, type: "manage" as const };
     }
 
-    if (targetPlanHierarchy > activePlanHierarchy) {
+    if (targetOrder > activeOrder) {
       return { text: "Upgrade", enabled: true, type: "upgrade" as const };
     }
 
@@ -238,9 +111,7 @@ const Premium = () => {
 
   const onPlanAction = async (planId: PlanId) => {
     const state = getPlanButtonState(planId);
-    if (!state.enabled) {
-      return;
-    }
+    if (!state.enabled) return;
 
     setSelectedPlanId(planId);
     setUpgradeMessage("");
@@ -255,7 +126,7 @@ const Premium = () => {
       return;
     }
 
-    const selectedPlan = PLAN_DATA.find((plan) => plan.id === planId);
+    const selectedPlan = plans.find((p) => p.id === planId);
     if (!selectedPlan) {
       setUpgradeMessage("Unable to identify selected plan.");
       return;
@@ -263,13 +134,13 @@ const Premium = () => {
 
     try {
       setUpdatingPlan(true);
-      const pricing = pricingByPlan[planId];
+      const weeklyPremium = getWeeklyPremium(selectedPlan);
 
       await updateDoc(doc(db, "users", user.uid), {
         activePlan: planId,
         activePlanName: selectedPlan.name,
         hasActivePolicy: true,
-        weeklyPremium: pricing.total,
+        weeklyPremium,
         policyStatus: "ACTIVE",
         policyStartDate: new Date().toISOString(),
       });
@@ -329,7 +200,7 @@ const Premium = () => {
                       <Zap className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
                     </div>
                     <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white uppercase tracking-wide">
-                      Pricing for {state}
+                      Pricing for {city}
                     </h2>
                   </div>
                   <div className="relative">
@@ -349,37 +220,48 @@ const Premium = () => {
                           initial={{ opacity: 0, y: 8 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: 8 }}
-                          className="absolute right-0 z-20 mt-2 w-72 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 p-3 text-xs text-slate-700 dark:text-slate-200 shadow-2xl"
+                          className="absolute right-0 z-20 mt-2 w-80 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 p-4 text-xs text-slate-700 dark:text-slate-200 shadow-2xl"
                         >
-                          <p className="font-semibold text-slate-900 dark:text-slate-100">
-                            Price breakdown
+                          <p className="font-semibold text-slate-900 dark:text-slate-100 mb-2">
+                            Price breakdown formula
                           </p>
-                          <p className="mt-1">
-                            Base: Rs {premiumBreakdown.basePrice}
-                          </p>
-                          <p>
-                            State Compensation: Rs{" "}
-                            {premiumBreakdown.stateCompensation >= 0 ? "+" : ""}
-                            {premiumBreakdown.stateCompensation}
-                          </p>
-                          <p className="mt-1 text-slate-600 dark:text-slate-300">
-                            Equation: Rs {premiumBreakdown.basePrice} + Rs
-                            {premiumBreakdown.stateCompensation >= 0 ? "+" : ""}
-                            {premiumBreakdown.stateCompensation} = Rs{" "}
-                            {premiumBreakdown.weeklyPrice}
-                          </p>
-                          <p className="mt-1 border-t border-slate-200 dark:border-slate-700 pt-1 font-semibold text-cyan-700 dark:text-cyan-200">
-                            Total: Rs {premiumBreakdown.weeklyPrice}/week
-                          </p>
-                          <p className="mt-2 text-slate-500 dark:text-slate-400">
-                            Why adjusted: base + state baseline compensation.
-                            Live weather and AQI explain risk context and can be
-                            +₹0 when no trigger surcharge is active.
-                          </p>
-                          <p className="mt-1 text-slate-500 dark:text-slate-400">
-                            State Baseline Compensation ({state}): +Rs
-                            {premiumBreakdown.stateCompensation}
-                          </p>
+                          <div className="space-y-1.5 mb-3">
+                            <p className="text-slate-600 dark:text-slate-400">
+                              <span className="font-mono font-bold text-slate-900 dark:text-white">
+                                Final Premium
+                              </span>{" "}
+                              = Base Price + Environmental Surcharge
+                            </p>
+                          </div>
+
+                          <div className="space-y-2 mb-3">
+                            {plans.map((plan) => (
+                                <div
+                                  key={plan.id}
+                                  className="rounded-lg border border-slate-200/70 dark:border-slate-700/70 bg-slate-50 dark:bg-slate-800/50 px-3 py-2"
+                                >
+                                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                                    {plan.name}
+                                  </p>
+                                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
+                                    ₹{plan.basePrice} base + ₹{liveSurcharge} surcharge ={" "}
+                                    <span className="font-bold text-slate-900 dark:text-white">
+                                      ₹{getWeeklyPremium(plan)}/wk
+                                    </span>
+                                  </p>
+                                </div>
+                              ))}
+                          </div>
+
+                          <div className="rounded-lg border border-amber-300/70 bg-gradient-to-r from-amber-50 to-orange-50 px-3 py-2 text-amber-900 shadow-sm dark:border-amber-700/50 dark:from-amber-900/25 dark:to-orange-900/25 dark:text-amber-100">
+                            <p className="text-[11px] font-bold uppercase tracking-wide">
+                              Environmental surcharge
+                            </p>
+                            <p className="text-sm font-black">
+                              +₹{envData?.liveSurcharge ?? 0}
+                            </p>
+                          </div>
+
                           {riskReasonItems.length > 0 ? (
                             <div className="mt-2 flex flex-wrap gap-1.5">
                               {riskReasonItems.map((item, idx) => (
@@ -392,8 +274,8 @@ const Premium = () => {
                               ))}
                             </div>
                           ) : (
-                            <p className="mt-1 text-slate-500 dark:text-slate-400">
-                              No extreme heat/rain/AQI trigger right now.
+                            <p className="mt-2 text-slate-500 dark:text-slate-400">
+                              No extreme triggers active right now.
                             </p>
                           )}
                         </motion.div>
@@ -403,9 +285,7 @@ const Premium = () => {
                 </div>
 
                 <div className="mt-4 space-y-2.5">
-                  {PLAN_DATA.map((plan) => {
-                    const breakdown = pricingByPlan[plan.id].breakdown;
-                    return (
+                  {plans.map((plan) => (
                       <div
                         key={plan.id}
                         className="rounded-xl border border-slate-200/70 dark:border-slate-700/70 bg-white/70 dark:bg-slate-900/70 px-3 py-2"
@@ -414,17 +294,10 @@ const Premium = () => {
                           {plan.name}
                         </p>
                         <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
-                          Rs {breakdown.basePrice} + Rs
-                          {breakdown.stateCompensation >= 0 ? "+" : ""}
-                          {breakdown.stateCompensation} =
-                          <span className="font-extrabold text-slate-900 dark:text-white">
-                            {" "}
-                            Rs {breakdown.weeklyPrice}/week
-                          </span>
+                          Base ₹{plan.basePrice} + Surcharge ₹{liveSurcharge} = ₹{getWeeklyPremium(plan)}/week
                         </p>
-                      </div>
-                    );
-                  })}
+                    </div>
+                  ))}
                 </div>
 
                 <p className="mt-4 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed"></p>
@@ -504,14 +377,14 @@ const Premium = () => {
             </div>
 
             <div className="grid md:grid-cols-3 gap-4 sm:gap-5 lg:gap-6">
-              {PLAN_DATA.map((plan, index) => {
+              {plans.map((plan, index) => {
                 const state = getPlanButtonState(plan.id);
-                const activeHierarchy = getPlanHierarchy(activePlanId);
-                const planHierarchy = getPlanHierarchy(plan.id);
+                const activeOrder = getPlanOrder(activePlanId);
+                const planOrder = getPlanOrder(plan.id);
                 const isCurrent = state.type === "manage";
                 const isDowngrade =
-                  !!activePlanId && planHierarchy < activeHierarchy;
-                const priceResult = pricingByPlan[plan.id];
+                  !!activePlanId && planOrder < activeOrder;
+                const planWeekly = getWeeklyPremium(plan);
                 const isSelected = selectedPlanId === plan.id;
 
                 return (
@@ -525,9 +398,7 @@ const Premium = () => {
                   >
                     <div
                       onClick={() => {
-                        if (!state.enabled) {
-                          return;
-                        }
+                        if (!state.enabled) return;
                         setSelectedPlanId(plan.id);
                       }}
                       className={`relative h-full rounded-[28px] border transition-all duration-300 overflow-hidden p-4 sm:p-5 ${
@@ -538,7 +409,7 @@ const Premium = () => {
                         isDowngrade ? "opacity-60" : "opacity-100"
                       } ${state.enabled ? "cursor-pointer" : "cursor-not-allowed"}`}
                     >
-                      {plan.id === "standard" && !isCurrent && (
+                      {plan.popular && !isCurrent && (
                         <div className="absolute top-3 right-3 px-3 py-1 bg-gradient-to-r from-amber-300 via-amber-400 to-yellow-300 text-slate-900 text-[10px] font-black uppercase rounded-full shadow-md tracking-wider">
                           Best Seller
                         </div>
@@ -557,23 +428,36 @@ const Premium = () => {
 
                         <div className="rounded-[14px] p-3 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60">
                           <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                            Base + state compensation
+                            Live weekly premium
                           </p>
                           <div className="mt-1 flex items-end justify-between gap-2">
                             <p className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
-                              Rs {priceResult.total}
+                              ₹{planWeekly}
                             </p>
                             <p className="text-[11px] text-slate-500">/week</p>
                           </div>
                           <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                            Rs {priceResult.breakdown.basePrice} + Rs
-                            {priceResult.breakdown.stateCompensation >= 0
-                              ? "+"
-                              : ""}
-                            {priceResult.breakdown.stateCompensation}
+                            Base ₹{plan.basePrice} + Surcharge ₹{liveSurcharge}
                           </p>
                         </div>
 
+                        {riskReasonItems.length > 0 && (
+                          <div className="rounded-[12px] p-3 border border-amber-200/50 dark:border-amber-700/30 bg-amber-50/50 dark:bg-amber-900/10">
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300 mb-1.5">
+                              Surcharge contributing factors
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {riskReasonItems.map((item, idx) => (
+                                <span
+                                  key={idx}
+                                  className="text-[10px] px-2 py-1 rounded-full border border-amber-300/70 dark:border-amber-600/40 bg-amber-100/70 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 font-medium"
+                                >
+                                  {item.factor} {item.impact}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                         <div className="space-y-1.5 min-h-[145px]">
                           {plan.features.map((feature) => (
                             <div

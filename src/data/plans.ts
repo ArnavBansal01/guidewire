@@ -1,7 +1,26 @@
-export const plans = [
+export type PlanTier = {
+  id: "basic" | "standard" | "premium";
+  name: string;
+  /** Display label used on the landing page (e.g. "Live") */
+  price: string;
+  /** Numeric base premium in ₹/week — single source of truth for pricing */
+  basePrice: number;
+  maxPayout: number;
+  maxDailyPayout: number;
+  period: string;
+  features: string[];
+  cta: string;
+  popular: boolean;
+};
+
+export const plans: PlanTier[] = [
   {
+    id: "basic",
     name: "GigAssure Basic",
-    price: "₹35",
+    price: "Live",
+    basePrice: 25,
+    maxPayout: 350,
+    maxDailyPayout: 150,
     period: "/week",
     features: [
       "Maximum payout: ₹350/week",
@@ -14,8 +33,12 @@ export const plans = [
     popular: false,
   },
   {
+    id: "standard",
     name: "GigAssure Standard",
-    price: "₹50",
+    price: "Live",
+    basePrice: 40,
+    maxPayout: 600,
+    maxDailyPayout: 250,
     period: "/week",
     features: [
       "Maximum payout: ₹600/week",
@@ -28,8 +51,12 @@ export const plans = [
     popular: true,
   },
   {
+    id: "premium",
     name: "GigAssure Premium",
-    price: "₹90",
+    price: "Live",
+    basePrice: 60,
+    maxPayout: 1000,
+    maxDailyPayout: 400,
     period: "/week",
     features: [
       "Maximum payout: ₹1000/week",
@@ -42,3 +69,17 @@ export const plans = [
     popular: false,
   },
 ];
+
+/** Resolve a plan by its id */
+export const getPlanById = (
+  id: string | null | undefined,
+): PlanTier | undefined => {
+  if (!id) return undefined;
+  const normalized = id.toLowerCase().trim();
+  return plans.find(
+    (p) =>
+      p.id === normalized ||
+      p.name.toLowerCase().includes(normalized) ||
+      normalized.includes(p.id),
+  );
+};

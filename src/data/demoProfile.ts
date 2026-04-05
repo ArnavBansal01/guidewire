@@ -16,5 +16,5 @@ export const DEMO_WORKER_DEFAULT_PROFILE = {
   role: "user",
   policyStatus: "Active",
   activePlan: "Standard",
-  weeklyPremium: 40,
+  weeklyPremium: 25,
 };

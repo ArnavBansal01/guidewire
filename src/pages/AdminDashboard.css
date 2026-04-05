@@ -1,53 +1,75 @@
 .admin-dashboard {
-  --bg-deep: #050c18;
-  --bg-card: #0b1628;
-  --border: rgba(32, 80, 140, 0.45);
-  --teal: #00d4c8;
-  --teal2: #00b8d4;
-  --orange: #ff6b35;
+  --bg-deep: #f8fafc;
+  --bg-card: rgba(255, 255, 255, 0.86);
+  --border: rgba(148, 163, 184, 0.26);
+  --teal: #06b6d4;
+  --teal2: #10b981;
+  --orange: #f97316;
   --green: #22c55e;
   --yellow: #f59e0b;
   --red: #ef4444;
-  --text: #e8f0fe;
-  --text-muted: #6b8db8;
-  --text-dim: #3a5a8a;
-  --sidebar-w: 230px;
+  --text: #0f172a;
+  --text-muted: #475569;
+  --text-dim: #64748b;
+  --sidebar-w: 248px;
   min-height: 100vh;
   background:
     radial-gradient(
       circle at top right,
-      rgba(0, 212, 200, 0.12),
-      transparent 30%
+      rgba(6, 182, 212, 0.16),
+      transparent 35%
     ),
     radial-gradient(
       circle at bottom left,
-      rgba(255, 107, 53, 0.12),
-      transparent 25%
+      rgba(16, 185, 129, 0.15),
+      transparent 30%
     ),
-    var(--bg-deep);
+    linear-gradient(180deg, #f8fbff 0%, #eef7ff 100%);
   color: var(--text);
-  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+  overflow-x: hidden;
 }
 
 .admin-dashboard.light {
-  --bg-deep: #edf4fb;
-  --bg-card: rgba(255, 255, 255, 0.92);
-  --border: rgba(120, 154, 196, 0.35);
+  --bg-deep: #f8fafc;
+  --bg-card: rgba(255, 255, 255, 0.9);
+  --border: rgba(148, 163, 184, 0.28);
   --text: #10233f;
-  --text-muted: #4e6d96;
-  --text-dim: #7e95b7;
+  --text-muted: #475569;
+  --text-dim: #64748b;
   background:
     radial-gradient(
       circle at top right,
-      rgba(0, 184, 212, 0.12),
-      transparent 28%
+      rgba(6, 182, 212, 0.16),
+      transparent 35%
     ),
     radial-gradient(
       circle at bottom left,
-      rgba(255, 107, 53, 0.1),
-      transparent 24%
+      rgba(16, 185, 129, 0.14),
+      transparent 30%
     ),
-    linear-gradient(180deg, #f7fbff 0%, #e6f0fa 100%);
+    linear-gradient(180deg, #f8fbff 0%, #eef7ff 100%);
+}
+
+.admin-dashboard.dark {
+  --bg-deep: #020617;
+  --bg-card: rgba(15, 23, 42, 0.8);
+  --border: rgba(51, 65, 85, 0.7);
+  --text: #f1f5f9;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(6, 182, 212, 0.2),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at bottom left,
+      rgba(16, 185, 129, 0.18),
+      transparent 30%
+    ),
+    linear-gradient(180deg, #020617 0%, #0f172a 100%);
 }
 
 .admin-dashboard * {
@@ -85,11 +107,11 @@
 .admin-dashboard .nav-logo {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: 10px;
   background: linear-gradient(135deg, var(--teal), var(--teal2));
-  color: #050c18;
+  color: #ffffff;
   font-size: 16px;
-  box-shadow: 0 0 14px rgba(0, 212, 200, 0.18);
+  box-shadow: 0 8px 16px rgba(6, 182, 212, 0.25);
 }
 
 .admin-dashboard .nav-name,
@@ -98,11 +120,17 @@
 .admin-dashboard .profile-name,
 .admin-dashboard .health-pct,
 .admin-dashboard .kpi-value {
-  font-family: "Arial Black", "Trebuchet MS", sans-serif;
+  font-family: "Segoe UI", "Trebuchet MS", sans-serif;
 }
 
 .admin-dashboard .nav-name {
   font-size: 18px;
+}
+
+.admin-dashboard .nav-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 1px;
 }
 
 .admin-dashboard .nav-link,
@@ -153,10 +181,10 @@
 
 .admin-dashboard .btn-signout {
   padding: 7px 16px;
-  border-radius: 7px;
+  border-radius: 10px;
   font-size: 13px;
-  font-weight: 500;
-  background: rgba(255, 255, 255, 0.05);
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.7);
   border: 1px solid var(--border);
   color: var(--text-muted);
   cursor: pointer;
@@ -164,12 +192,12 @@
 
 .admin-dashboard .theme-toggle {
   width: 100%;
-  min-height: 40px;
+  min-height: 38px;
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.7);
   border: 1px solid var(--border);
   color: var(--text-muted);
   cursor: pointer;
@@ -188,12 +216,14 @@
 .admin-dashboard .shell {
   display: flex;
   min-height: 100vh;
+  width: 100%;
+  max-width: 100%;
 }
 
 .admin-dashboard .sidebar {
   width: var(--sidebar-w);
   flex-shrink: 0;
-  background: rgba(11, 22, 40, 0.7);
+  background: rgba(255, 255, 255, 0.74);
   border-right: 1px solid var(--border);
   padding: 24px 12px;
   display: flex;
@@ -202,13 +232,17 @@
 }
 
 .admin-dashboard.light .sidebar {
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.admin-dashboard.dark .sidebar {
+  background: rgba(15, 23, 42, 0.86);
 }
 
 .admin-dashboard.light .btn-signout,
 .admin-dashboard.light .theme-toggle,
 .admin-dashboard.light .btn-ghost {
-  background: rgba(16, 35, 63, 0.04);
+  background: rgba(255, 255, 255, 0.72);
 }
 
 .admin-dashboard.light .theme-toggle:hover {
@@ -261,17 +295,17 @@
 }
 
 .admin-dashboard .sidebar-item:hover {
-  background: rgba(0, 212, 200, 0.08);
+  background: rgba(6, 182, 212, 0.1);
   color: var(--text);
-  box-shadow: 0 0 15px rgba(0, 212, 200, 0.15);
+  box-shadow: 0 0 14px rgba(6, 182, 212, 0.14);
   transform: translateX(4px);
 }
 
 .admin-dashboard .sidebar-item.active {
-  background: rgba(0, 212, 200, 0.15);
-  border-color: rgba(0, 212, 200, 0.4);
+  background: rgba(6, 182, 212, 0.16);
+  border-color: rgba(6, 182, 212, 0.34);
   color: var(--teal);
-  box-shadow: 0 0 20px rgba(0, 212, 200, 0.25);
+  box-shadow: 0 0 18px rgba(6, 182, 212, 0.2);
 }
 
 .admin-dashboard .sidebar-icon {
@@ -299,28 +333,29 @@
 .admin-dashboard .main {
   flex: 1;
   padding: 28px 30px;
+  min-width: 0;
+  max-width: 100%;
 }
 
-.admin-dashboard .topnav {
+.admin-dashboard .live-status-row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 18px;
-  padding: 12px 14px;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.admin-dashboard .live-chip {
+  border-radius: 999px;
   border: 1px solid var(--border);
-  border-radius: 12px;
-  background: rgba(5, 12, 24, 0.42);
+  padding: 5px 11px;
+  font-size: 11px;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.03);
 }
 
-.admin-dashboard.light .topnav {
-  background: rgba(255, 255, 255, 0.72);
-}
-
-.admin-dashboard .topnav .theme-toggle {
-  width: auto;
-  min-height: 34px;
-  padding: 6px 12px;
+.admin-dashboard .live-sync {
+  margin-left: 0;
 }
 
 .admin-dashboard .command-grid {
@@ -394,12 +429,14 @@
 .admin-dashboard .ticket {
   background: var(--bg-card);
   border: 1px solid var(--border);
+  backdrop-filter: blur(4px);
 }
 
 .admin-dashboard .kpi-card {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border-radius: 14px;
   padding: 18px 20px;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
 }
 
 .admin-dashboard .kpi-icon {
@@ -467,9 +504,14 @@
   margin-bottom: 18px;
   transition: all 0.3s ease;
 }
+
+.admin-dashboard .section-card.claims-compact {
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
 .admin-dashboard .section-card:hover {
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
-  border-color: rgba(32, 80, 140, 0.6);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.09);
+  border-color: rgba(6, 182, 212, 0.28);
 }
 
 .admin-dashboard .section-title {
@@ -496,6 +538,7 @@
 .admin-dashboard .data-table {
   width: 100%;
   border-collapse: collapse;
+  min-width: 780px;
 }
 .admin-dashboard .data-table tbody tr {
   transition: all 0.2s ease;
@@ -512,6 +555,51 @@
   border-bottom: 1px solid rgba(32, 80, 140, 0.2);
 }
 
+.admin-dashboard .claims-compact .data-table th,
+.admin-dashboard .claims-compact .data-table td {
+  padding: 7px 10px;
+}
+
+.admin-dashboard .claims-compact .data-table th {
+  font-size: 10px;
+}
+
+.admin-dashboard .claims-compact .data-table td,
+.admin-dashboard .claims-compact .name {
+  font-size: 12px;
+}
+
+.admin-dashboard .claims-compact .sub {
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.admin-dashboard .claims-compact .badge {
+  padding: 2px 8px;
+  font-size: 10px;
+}
+
+.admin-dashboard .claims-compact .score-wrap {
+  gap: 6px;
+}
+
+.admin-dashboard .claims-compact .score-val {
+  width: 30px;
+  font-size: 11px;
+}
+
+.admin-dashboard .claims-compact .action-row {
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+.admin-dashboard .claims-compact .btn {
+  padding: 6px 10px;
+  font-size: 11px;
+  border-radius: 7px;
+  white-space: nowrap;
+}
+
 .admin-dashboard .data-table th {
   font-size: 11px;
   text-transform: uppercase;
@@ -521,6 +609,21 @@
 .admin-dashboard .data-table td,
 .admin-dashboard .name {
   color: var(--text);
+}
+
+.admin-dashboard .table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 10px;
+}
+
+.admin-dashboard .table-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+
+.admin-dashboard .table-scroll::-webkit-scrollbar-thumb {
+  background: rgba(107, 141, 184, 0.45);
+  border-radius: 999px;
 }
 
 .admin-dashboard .badge {
@@ -637,8 +740,8 @@
 }
 
 .admin-dashboard .terminal {
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(0, 212, 200, 0.15);
+  background: rgba(15, 23, 42, 0.94);
+  border: 1px solid rgba(148, 163, 184, 0.35);
   border-radius: 12px;
   padding: 14px 16px;
   font-family: "Courier New", monospace;
@@ -713,7 +816,7 @@
 .admin-dashboard .btn-primary {
   transition: all 0.3s ease;
   background: linear-gradient(135deg, var(--teal), var(--teal2));
-  color: #050c18;
+  color: #ffffff;
 }
 
 .admin-dashboard .btn-danger {
@@ -811,6 +914,65 @@
   border-radius: 10px;
   padding: 14px;
   margin-bottom: 10px;
+}
+
+.admin-dashboard .claims-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-dashboard .claims-compact .claims-stack {
+  gap: 8px;
+}
+
+.admin-dashboard .claim-status-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  padding: 12px;
+}
+
+.admin-dashboard .claim-status-card.approved {
+  background: rgba(34, 197, 94, 0.08);
+  border-color: rgba(34, 197, 94, 0.25);
+}
+
+.admin-dashboard .claim-status-card.rejected {
+  background: rgba(239, 68, 68, 0.09);
+  border-color: rgba(239, 68, 68, 0.28);
+}
+
+.admin-dashboard .claim-status-title {
+  color: var(--text);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.admin-dashboard .claims-compact .claim-status-card {
+  padding: 10px 11px;
+}
+
+.admin-dashboard .claims-compact .claim-status-title {
+  font-size: 12px;
+}
+
+.admin-dashboard .claims-compact .claim-amount-text {
+  font-size: 11px;
+}
+
+.admin-dashboard .claim-status-right {
+  display: grid;
+  justify-items: end;
+  gap: 5px;
+}
+
+.admin-dashboard .claim-amount-text {
+  color: var(--yellow);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .admin-dashboard .ticket-foot {
@@ -950,6 +1112,10 @@
     align-items: flex-start;
   }
 
+  .admin-dashboard .live-sync {
+    margin-left: 0;
+  }
+
   .admin-dashboard .nav-right {
     width: 100%;
     justify-content: flex-start;
@@ -959,8 +1125,8 @@
 
 .admin-dashboard .kpi-card:hover {
   transform: translateY(-4px) scale(1.02);
-  box-shadow: 0 12px 30px rgba(0, 212, 200, 0.12);
-  border-color: rgba(0, 212, 200, 0.4);
+  box-shadow: 0 12px 30px rgba(6, 182, 212, 0.12);
+  border-color: rgba(6, 182, 212, 0.35);
   z-index: 10;
 }
 .admin-dashboard .btn-primary:hover {

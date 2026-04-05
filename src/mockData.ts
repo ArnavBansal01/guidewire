@@ -71,7 +71,7 @@ export const mockUser: User = {
 export const mockPolicy: Policy = {
   id: "policy-001",
   type: "standard",
-  weeklyPremium: 40,
+  weeklyPremium: 25,
   coverageAmount: 2000,
   status: "active",
   startDate: "2024-03-22",

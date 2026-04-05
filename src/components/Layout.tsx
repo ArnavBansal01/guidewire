@@ -7,13 +7,7 @@ import { useAuth } from "../contexts/AuthContext";
 const Layout = () => {
   const location = useLocation();
   const { user } = useAuth();
-  const hiddenNavigationRoutes = [
-    "/login",
-    "/register",
-    "/terms",
-    "/privacy",
-    "/admin",
-  ];
+  const hiddenNavigationRoutes = ["/login", "/register", "/terms", "/privacy"];
   const hideNavigation = hiddenNavigationRoutes.includes(location.pathname);
   const showBottomMobileNav = !hideNavigation && !!user;
 

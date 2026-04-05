@@ -6,72 +6,72 @@ import {
   CheckCircle,
   AlertTriangle,
   ArrowRight,
+  Info,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cities } from "../mockData";
 import { plans } from "../data/plans";
 import { useUserProfile } from "../hooks/useUserProfile";
 import LocationSearchSelect from "../components/LocationSearchSelect";
-import {
-  calculateFinalPrice,
-  getStateCompensation,
-  getStateFromCity,
-} from "../utils/PremiumLogic";
-
-type BreakdownItem = {
-  factor: string;
-  impact: string;
-};
+import { calculateFinalPrice } from "../utils/PremiumLogic";
+import type { EnvironmentalConditions, SurchargeBreakdownItem } from "../utils/PremiumLogic";
 
 type CalculatorResult = {
-  finalPremium: number;
-  state?: string;
-  stateCompensation?: number;
-  liveData: {
-    temp: number;
-    rainProb: number;
-    aqi: number;
-  };
-  breakdown: BreakdownItem[];
+  liveRiskScore: number;
+  liveSurcharge: number;
+  liveData: EnvironmentalConditions;
+  breakdown: SurchargeBreakdownItem[];
 };
 
 const normalizeResult = (payload: unknown): CalculatorResult => {
-  const data = (payload as Partial<CalculatorResult>) || {};
-  const liveData =
-    (data.liveData as Partial<CalculatorResult["liveData"]>) || {};
+  const data = (payload as Partial<{
+    liveRiskScore: number;
+    liveSurcharge: number;
+    liveData: Partial<EnvironmentalConditions>;
+    breakdown: Array<{ factor: string; impact: string }>;
+  }>) || {};
+
+  const liveData = data.liveData || {};
   const breakdownRaw = Array.isArray(data.breakdown) ? data.breakdown : [];
-  const breakdown = breakdownRaw.map((item) => {
+
+  const parseImpactAmount = (impact: string): number => {
+    const match = impact.replace(/[^\d.-]/g, "");
+    const num = Number(match);
+    return Number.isFinite(num) ? num : 0;
+  };
+
+  const breakdown: SurchargeBreakdownItem[] = breakdownRaw.map((item) => {
     const safeItem =
       typeof item === "object" && item !== null
-        ? (item as Partial<BreakdownItem>)
+        ? (item as Partial<{ factor: string; impact: string }>)
         : {};
 
+    const impact = typeof safeItem.impact === "string" ? safeItem.impact : "+₹0";
     return {
       factor: typeof safeItem.factor === "string" ? safeItem.factor : "Unknown",
-      impact: typeof safeItem.impact === "string" ? safeItem.impact : "₹0",
+      impact,
+      amount: parseImpactAmount(impact),
     };
   });
 
   return {
-    finalPremium:
-      typeof data.finalPremium === "number" &&
-      Number.isFinite(data.finalPremium)
-        ? data.finalPremium
-        : 45,
-    state: typeof data.state === "string" ? data.state : undefined,
-    stateCompensation:
-      typeof data.stateCompensation === "number" &&
-      Number.isFinite(data.stateCompensation)
-        ? data.stateCompensation
-        : undefined,
+    liveRiskScore:
+      typeof data.liveRiskScore === "number" &&
+      Number.isFinite(data.liveRiskScore)
+        ? data.liveRiskScore
+        : 0,
+    liveSurcharge:
+      typeof data.liveSurcharge === "number" &&
+      Number.isFinite(data.liveSurcharge)
+        ? data.liveSurcharge
+        : 0,
     liveData: {
       temp:
         typeof liveData.temp === "number" && Number.isFinite(liveData.temp)
           ? liveData.temp
           : 0,
       rainProb:
-        typeof liveData.rainProb === "number" &&
-        Number.isFinite(liveData.rainProb)
+        typeof liveData.rainProb === "number" && Number.isFinite(liveData.rainProb)
           ? liveData.rainProb
           : 0,
       aqi:
@@ -99,7 +99,6 @@ const Calculator = () => {
   const [fetchingUser, setFetchingUser] = useState(true);
   const [result, setResult] = useState<CalculatorResult | null>(null);
   const [error, setError] = useState("");
-  const pricingState = getStateFromCity(formData.zone);
   const rainTriggered = (result?.liveData.rainProb ?? 0) > 60;
   const heatTriggered = (result?.liveData.temp ?? 0) > 40;
   const aqiTriggered = (result?.liveData.aqi ?? 0) > 150;
@@ -119,23 +118,17 @@ const Calculator = () => {
     heatTriggered ? "Heatwave" : null,
     aqiTriggered ? "Poor AQI" : null,
   ].filter(Boolean) as string[];
-  const resolvedPricingState = result?.state || pricingState;
-  const stateCompensationValue = getStateCompensation(resolvedPricingState);
   const riskReasonItems = (result?.breakdown || []).filter((item) => {
     const factor = item.factor.toLowerCase();
     return (
-      !factor.includes("state compensation") &&
-      !factor.includes("standard zone risk") &&
-      !factor.includes("safe zone") &&
-      !factor.includes("flood zone")
+      !factor.includes("live disruption score") &&
+      !factor.includes("compound disruption signal")
     );
   });
 
   // 1. AUTO-FETCH USER DATA FROM CENTRALIZED PROFILE SOURCE
   useEffect(() => {
-    if (loadingProfile) {
-      return;
-    }
+    if (loadingProfile) return;
 
     if (profile) {
       setFormData((prev) => ({
@@ -153,7 +146,7 @@ const Calculator = () => {
     if (!result) return;
 
     const timer = window.setTimeout(() => {
-      const isMobile = window.innerWidth < 992; // Tailwind lg breakpoint
+      const isMobile = window.innerWidth < 992;
       const targetElement = isMobile ? riskRef.current : plansRef.current;
       if (!targetElement) return;
 
@@ -167,7 +160,7 @@ const Calculator = () => {
     return () => window.clearTimeout(timer);
   }, [result]);
 
-  // 2. FETCH AI PRICING FROM VERCEL BACKEND
+  // 2. FETCH AI PRICING FROM BACKEND
   const handleCalculate = async () => {
     if (!formData.zone) {
       setError("Please ensure your city is set in your profile.");
@@ -179,7 +172,6 @@ const Calculator = () => {
     setResult(null);
 
     try {
-      // THE MAGIC LINK: This pulls the URL from your .env file automatically!
       const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
       const response = await fetch(`${apiUrl}/api/calculate-premium`, {
@@ -196,8 +188,6 @@ const Calculator = () => {
 
       const data = await response.json();
       setResult(normalizeResult(data));
-
-      // Scroll to appropriate section based on device type (use state to trigger after render)
     } catch (err: any) {
       setError(err.message || "Something went wrong");
     } finally {
@@ -207,10 +197,6 @@ const Calculator = () => {
 
   const handleBuyPremium = () => {
     navigate("/premium");
-  };
-
-  const getNumericPrice = (priceStr: string) => {
-    return parseInt(priceStr.replace(/[^0-9]/g, ""), 10) || 0;
   };
 
   // Show a loading state while we fetch their city from Firebase
@@ -399,17 +385,25 @@ const Calculator = () => {
                     Pricing And Risk Factors
                   </h4>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Base plan is adjusted by state baseline compensation. Heat,
-                    rain, and AQI entries below explain risk context and may be
-                    informational (+₹0) when no active surcharge applies.
+                    Premium is driven entirely by live rain, heat, and AQI
+                    disruption signals.
                   </p>
                   <div className="flex justify-between items-center text-sm p-2 rounded-lg bg-cyan-50 dark:bg-cyan-900/20 border border-cyan-200 dark:border-cyan-700/50">
                     <span className="flex items-center gap-2 font-medium text-cyan-800 dark:text-cyan-200">
                       <CheckCircle className="w-4 h-4 text-cyan-600 dark:text-cyan-300" />
-                      State Baseline Compensation ({resolvedPricingState})
+                      Live Risk Score
                     </span>
                     <span className="font-mono font-bold text-cyan-700 dark:text-cyan-300">
-                      +₹{stateCompensationValue}
+                      {result.liveRiskScore}/100
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm p-2 rounded-lg bg-slate-50 dark:bg-slate-800/40">
+                    <span className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-emerald-500" />
+                      Live disruption surcharge
+                    </span>
+                    <span className="font-mono font-bold text-amber-500">
+                      +₹{result.liveSurcharge}/week
                     </span>
                   </div>
                   {riskReasonItems.length > 0 ? (
@@ -474,15 +468,11 @@ const Calculator = () => {
             </h2>
             <div className="grid md:grid-cols-3 gap-6">
               {plans.map((plan) => {
-                const basePrice = getNumericPrice(plan.price);
                 const finalPriceResult = calculateFinalPrice({
-                  basePrice,
-                  city: formData.zone,
+                  basePrice: plan.basePrice,
+                  liveData: result.liveData,
                   duration: 1,
                 });
-                const finalPrice = finalPriceResult.total;
-                const stateCompensation =
-                  finalPriceResult.breakdown.stateCompensation;
 
                 return (
                   <div
@@ -502,16 +492,36 @@ const Calculator = () => {
                       <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
                       <div className="flex items-baseline justify-center gap-1">
                         <span className="text-4xl font-bold text-cyan-600 dark:text-cyan-400">
-                          ₹{finalPrice}
+                          ₹{finalPriceResult.weeklyPremium}
                         </span>
                         <span className="text-slate-600 dark:text-slate-400">
                           {plan.period}
                         </span>
                       </div>
-                      <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                        State: {pricingState} • Compensation: ₹
-                        {stateCompensation}/week
-                      </p>
+
+                      {/* ── "Why this price?" micro-breakdown ── */}
+                      <div className="mt-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-3">
+                        <div className="flex items-center justify-center gap-1 mb-2">
+                          <Info className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
+                          <p className="text-[10px] font-bold uppercase tracking-wide text-cyan-700 dark:text-cyan-300">
+                            Why this price?
+                          </p>
+                        </div>
+                        <div className="space-y-1 text-xs">
+                          <div className="flex justify-between text-slate-600 dark:text-slate-300">
+                            <span>Base ({plan.name.split(" ").pop()})</span>
+                            <span className="font-mono font-semibold">₹{plan.basePrice}</span>
+                          </div>
+                          <div className="flex justify-between text-amber-600 dark:text-amber-400">
+                            <span>Env. Surcharge</span>
+                            <span className="font-mono font-semibold">+₹{finalPriceResult.liveSurcharge}</span>
+                          </div>
+                          <div className="border-t border-dashed border-slate-300 dark:border-slate-600 pt-1 flex justify-between font-bold text-slate-900 dark:text-white">
+                            <span>Total</span>
+                            <span className="font-mono">₹{finalPriceResult.weeklyPremium}/wk</span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                     <div className="space-y-3 mb-8">
                       {plan.features.map((f, i) => (
