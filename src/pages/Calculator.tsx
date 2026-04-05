@@ -11,6 +11,7 @@ import { useNavigate } from "react-router-dom";
 import { cities } from "../mockData";
 import { plans } from "../data/plans";
 import { useUserProfile } from "../hooks/useUserProfile";
+import LocationSearchSelect from "../components/LocationSearchSelect";
 import {
   calculateFinalPrice,
   getStateCompensation,
@@ -291,22 +292,15 @@ const Calculator = () => {
 
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  Primary Zone (City)
+                  Primary Zone (State / UT)
                 </label>
-                <select
+                <LocationSearchSelect
                   value={formData.zone}
-                  onChange={(e) =>
-                    setFormData({ ...formData, zone: e.target.value })
-                  }
-                  className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-cyan-500 outline-none transition-all"
-                >
-                  <option value="">Select city</option>
-                  {cities.map((city) => (
-                    <option key={city} value={city}>
-                      {city}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(zone) => setFormData({ ...formData, zone })}
+                  options={cities}
+                  placeholder="Search and select your state/UT"
+                  className="w-full"
+                />
               </div>
 
               <button

@@ -18,6 +18,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useUserProfile } from "../hooks/useUserProfile";
 import { partners } from "../data/partners";
 import { cities } from "../mockData";
+import LocationSearchSelect from "../components/LocationSearchSelect";
 
 type ProfileFormState = {
   fullName: string;
@@ -292,20 +293,19 @@ const Profile = () => {
                 <label className="space-y-1.5">
                   <span className="text-sm font-medium text-slate-700 dark:text-slate-200 flex items-center gap-2">
                     <MapPin className="h-4 w-4" />
-                    City
+                    State / UT
                   </span>
-                  <select
+                  <LocationSearchSelect
                     value={form.city}
-                    onChange={handleChange("city")}
-                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                  >
-                    <option value="">Select city</option>
-                    {cities.map((city) => (
-                      <option key={city} value={city}>
-                        {city}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(city) => {
+                      setSaveMessage(null);
+                      setErrorMessage(null);
+                      setForm((prev) => ({ ...prev, city }));
+                    }}
+                    options={cities}
+                    placeholder="Search and select your state/UT"
+                    className="w-full"
+                  />
                 </label>
 
                 <label className="space-y-1.5">

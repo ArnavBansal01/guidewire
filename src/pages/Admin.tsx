@@ -22,6 +22,8 @@ import {
   fetchSystemIntelligence,
 } from "../services/adminService";
 import { buildInitialAdminTerminalLogs } from "../services/adminConsoleService";
+import { cities } from "../mockData";
+import LocationSearchSelect from "../components/LocationSearchSelect";
 import type { AdminStats, UserProfile } from "../types/domain";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
@@ -1167,20 +1169,14 @@ const Admin = () => {
               />
               <div className="two-col">
                 <Section title="Global Disruption Simulator" tone="orange">
-                  <Field label="Target City">
-                    <select
-                      className="form-select"
+                  <Field label="Target State / UT">
+                    <LocationSearchSelect
                       value={simCity}
-                      onChange={(e) => setSimCity(e.target.value)}
-                    >
-                      <option value="">Select city</option>
-                      <option>Delhi</option>
-                      <option>Mumbai</option>
-                      <option>Bangalore</option>
-                      <option>Chennai</option>
-                      <option>Hyderabad</option>
-                      <option>Pune</option>
-                    </select>
+                      onChange={setSimCity}
+                      options={cities}
+                      placeholder="Search and select state/UT"
+                      className="w-full"
+                    />
                   </Field>
                   <Field label="Disruption Type">
                     <select

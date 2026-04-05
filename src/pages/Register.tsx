@@ -19,6 +19,7 @@ import BrandLoader from "../components/BrandLoader";
 import { DEMO_WORKER_DEFAULT_PROFILE } from "../data/demoProfile";
 import { cities } from "../mockData";
 import { partners } from "../data/partners";
+import LocationSearchSelect from "../components/LocationSearchSelect";
 
 const Register = () => {
   const navigate = useNavigate();
@@ -398,23 +399,16 @@ const Register = () => {
 
                 <div>
                   <label className="block text-sm font-semibold mb-2 text-slate-700 dark:text-slate-300">
-                    City
+                    State / UT
                   </label>
-                  <select
-                    required
+                  <LocationSearchSelect
                     value={formData.city}
-                    onChange={(e) =>
-                      setFormData({ ...formData, city: e.target.value })
-                    }
-                    className="w-full px-4 py-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 hover:bg-white dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-800 focus:ring-4 focus:ring-cyan-500/10 focus:border-cyan-500 outline-none transition-all shadow-sm font-medium"
-                  >
-                    <option value="">Select your city</option>
-                    {cities.map((city) => (
-                      <option key={city} value={city}>
-                        {city}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(city) => setFormData({ ...formData, city })}
+                    options={cities}
+                    required
+                    placeholder="Search and select your state/UT"
+                    className="w-full"
+                  />
                 </div>
 
                 <div>
