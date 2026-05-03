@@ -175,6 +175,4 @@ opening a PR.
 
 ## License & Contact
 
-MIT License (or choose your preferred license).
-
 For questions or collaboration: contact the authors via the repository.
